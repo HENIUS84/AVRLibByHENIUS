@@ -4,35 +4,30 @@
  * @author   HENIUS (Paweł Witak)
  * @version  1.1.1
  * @date     30-03-2012
- * @brief    Obsługa generowania dźwięku
+ * @brief    Implementation of sound generator
  *******************************************************************************
  *
  * <h2><center>COPYRIGHT 2012 HENIUS</center></h2>
  */
 
-/* Sekcja include ------------------------------------------------------------*/
+/* Include section -----------------------------------------------------------*/
 
-// --->Pliki systemowe
+// --->System files
 
 #include <math.h>
 #include <avr/io.h>
 
-// --->Pliki użytkownika
+// --->User files
 
 #include "Audio.h"
 
-/* Sekcja zmiennych ----------------------------------------------------------*/
+/* Variable section ----------------------------------------------------------*/
 
-uint32_t CPUfrequency;				/*!< Częstotliwość CPU w MHz */
+static  CPUfrequency;						/*!< CPU frequency in MHz */
 
-/* Sekcja funkcji ------------------------------------------------------------*/
+/* Function section ----------------------------------------------------------*/
 
 /*----------------------------------------------------------------------------*/
-/**
- * @brief    Inicjalizacja obsługi audio
- * @param    cpuFreq : częstotliwość CPU w MHz
- * @retval   Brak
- */
 void Audio_Init(uint32_t cpuFreq)
 {
 	CPUfrequency = cpuFreq;
@@ -47,38 +42,26 @@ void Audio_Init(uint32_t cpuFreq)
 
 /*----------------------------------------------------------------------------*/
 /**
- * @brief    Rozpoczęcie generowania dźwięku
- * @param    Brak
- * @retval   Brak
+ * @brief    Starts audio generation
+ * @param    None
+ * @retval   None
  */
-void Audio_StartSound(void)
+static void Audio_StartSound(void)
 {
 	TCCR1B |= AUDIO_PRESC_CS << CS00;
 }
 
 /*----------------------------------------------------------------------------*/
-/**
- * @brief    Zatrzymanie generowania dźwięku
- * @param    Brak
- * @retval   Brak
- */
 void Audio_StopSound(void)
 {
 	TCCR1B &= ~AUDIO_PRESC_CS << CS00;
 }
 
 /*----------------------------------------------------------------------------*/
-/**
- * @brief    Ustawianie częstotliwości
- * @param    freq : częstotliwość w Hz
- * @retval   Brak
- */
 void Audio_SetFreq(uint16_t freq)
 {
-	// Ustawienie częstotliwości
 	FREQ_REGISTER = CPUfrequency / (2 * (uint32_t)freq * AUDIO_PRESC) - 1;
-	// Rozpoczęcie generowania dzwięku
 	Audio_StartSound(); 
 }	
 
-/******************* (C) COPYRIGHT 2012 HENIUS *************** KONIEC PLIKU ***/
+/******************* (C) COPYRIGHT 2012 HENIUS *************** END OF FILE ****/

@@ -4,48 +4,37 @@
  * @author   HENIUS (Paweł Witak)
  * @version  1.1.1
  * @date     18/03/2011
- * @brief    Obsługa trybu debug
+ * @brief    Implementation of DEBUG support
  *******************************************************************************
  *
  * <h2><center>COPYRIGHT 2011 HENIUS</center></h2>
  */
 
-/* Sekcja include ------------------------------------------------------------*/
+/* Include section -----------------------------------------------------------*/
 
-// --->Pliki systemowe
+// --->System files
 
 #include <stdint.h>
 #include <stdio.h>
 
-// --->Pliki użytkownika
+// --->User files
 
 #include "Debug.h"
 
-/* Sekcja zmiennych ----------------------------------------------------------*/
+/* Variable section ----------------------------------------------------------*/
 
-bool DbgModeEnabled = false;		/*!< Aktywacja trybu debug */
-uint8_t TextBuffer[100];			/*!< Bufor na tekst */
+static bool DbgModeEnabled = false;			/*!< Debug mode activation */
+static uint8_t TextBuffer[100];				/* Text buffer */
 
-/* Sekcja funkcji ------------------------------------------------------------*/
+/* Function section ----------------------------------------------------------*/
 
 /*----------------------------------------------------------------------------*/
-/**
- * @brief    Aktwacja trybu debug
- * @param    isDebugSet : flaga włączająca tryb DEBUG
- * @retval   Brak
- */
 void SetDebugMode(bool isDebugSet)
 {
 	DbgModeEnabled = isDebugSet;
 }
 
 /*----------------------------------------------------------------------------*/
-/**
- * @brief    Wyświetlanie komunikatu debug (z pamięci RAM)
- * @param    *msg : komunikat
- * @param    ... : lista argumentów
- * @retval   Brak
- */
 void DebugWrite(char *msg, ...)
 {
 	va_list args;
@@ -60,11 +49,6 @@ void DebugWrite(char *msg, ...)
 }
 
 /*----------------------------------------------------------------------------*/
-/**
- * @brief    Wyświetlanie komunikatu debug (z pamięci programu)
- * @param    *msg : komunikat
- * @retval   ... : lista argumentów
- */
 void DebugWrite_P(char *msg, ...)
 {
 	va_list args;
@@ -78,4 +62,4 @@ void DebugWrite_P(char *msg, ...)
 	}
 }
 
-/******************* (C) COPYRIGHT 2011 HENIUS *************** KONIEC PLIKU ***/
+/******************* (C) COPYRIGHT 2011 HENIUS *************** END OF FILE ****/

@@ -4,40 +4,43 @@
  * @author   HENIUS (Paweł Witak)
  * @version  1.01.003
  * @date     15/11/2013
- * @brief    Zestaw funkcji związanych z obsługa portu szeregowego z IRQ
+ * @brief    Serial Port driver with IRQ support
  *******************************************************************************
  *
  * <h2><center>COPYRIGHT 2013 HENIUS</center></h2>
  */
 
-/* Sekcja include ------------------------------------------------------------*/
+/* Include section -----------------------------------------------------------*/
 
-// --->Pliki systemowe
+// --->System files
 
 #include <stdio.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
-// --->Pliki użytkownika
+// --->User files
 
 #include "SerialPort.h"
 
-/* Sekcja zmiennych ----------------------------------------------------------*/
+/* Variable section ----------------------------------------------------------*/
 
-/*! Tablica konfiguratorów portów szeregowych */
-SerialPort_t SerialPort[SP_NUMBER_OF_PORTS];
-/*!< Wskaźnik do danych inicjalizujących */
-SPController_t *SerialPortController;
-// Funkcja wysyłająca znak dla funkcji printf
+/*! List wit serial port configurations */
+static SerialPort_t SerialPort[SP_NUMBER_OF_PORTS];
+/*!< Pointer to the initialization data */
+static SPController_t *SerialPortController;
+
+/* Declaration section -------------------------------------------------------*/
+
+/*! Function to send character for printf purpose */
 int SerialPort_Transmit(char data, FILE *stream);
 
-/* Sekcja funkcji ------------------------------------------------------------*/
+/* Function section ----------------------------------------------------------*/
 
 /*----------------------------------------------------------------------------*/
 /**
- * @brief    Inicjalizacja modułu portu szeregowego
- * @param    data : wskaźnik do danych inicjalizujących komunikację szeregową
- * @retval   Brak
+ * @brief    Initializes serial port
+ * @param    data : pointer to the initialization data
+ * @retval   None
  */
 void SerialPort_Init(SPController_t *data)
 {
@@ -47,7 +50,7 @@ void SerialPort_Init(SPController_t *data)
 		fdevopen(SerialPort_Transmit, NULL);
 	}
 	
-	// --->Inicjalizacja rejestrów
+	// --->Register initialization
 	
 	// Port SPN_USART0
 	SerialPort[SPN_USART0].Register.rUDR = &UDR_0;
@@ -72,7 +75,7 @@ void SerialPort_Init(SPController_t *data)
 	SerialPort[SPN_USART0].Bit.bUDRIE = UDRIE_0;
 	
 #ifdef SPN_USART1
-	// Port SPN_USART1
+	// SPN_USART1 port
 	SerialPort[SPN_USART1].Register.rUDR = &UDR1;
 	SerialPort[SPN_USART1].Register.rUBRRH = &UBRR1H;
 	SerialPort[SPN_USART1].Register.rUBRRL = &UBRR1L;
@@ -98,27 +101,24 @@ void SerialPort_Init(SPController_t *data)
 
 /*----------------------------------------------------------------------------*/
 /**
- * @brief    Sprawdzanie statusu odczytu
- * @param    reg : rejestr portu
- * @retval : Status operacji odczytu
+ * @brief    Check receive status
+ * @param    reg : port register
+ * @retval : OPeration status
  */
-ESPRcvStatus_t SerialPort_GetRcvStatus(uint8_t reg)
+static ESPRcvStatus_t SerialPort_GetRcvStatus(uint8_t reg)
 {
 	ESPRcvStatus_t result;
 
 	if (reg & _BV(FE_0))
 	{
-		// Błąd ramki
 		result = SPRS_FRAME_ERROR;
 	}
 	else if (reg & _BV(DOR_0))
 	{
-		// Błąd nadpisania danych
 		result = SPRS_DATA_OVERRUN_ERROR;
 	}
 	else if (reg & _BV(UPE_0))
 	{
-		// Błąd parzystości
 		result = SPRS_PARITY_ERROR;
 	}
 	else
@@ -130,24 +130,16 @@ ESPRcvStatus_t SerialPort_GetRcvStatus(uint8_t reg)
 }
 
 /*----------------------------------------------------------------------------*/
-/**
- * @brief    Otwarcie portu szeregowego
- * @param    serialPortName : nazwa portu
- * @param    serialPortConfig : konfiguracja portu
- * @retval   Brak
- */
 void SerialPort_Open(ESPName_t serialPortName, SPDescriptor_t *serialPortConfig)
 {
-	uint16_t ubrr = 0;				// Rejestr prędkości
+	uint16_t ubrr = 0;
 	
 	if (IS_SP_EXIST(serialPortName))
 	{		
 		SerialPort[serialPortName].IsPortOpen = false;
-				
-		// Zapamiętanie konfiguracji portu
 		SerialPort[serialPortName].UsartDescriptor = serialPortConfig;
 	
-		// --->Ustalanie liczby bitów danych
+		// --->Data length bits
 		if ((serialPortConfig->DataLength - 5) & 0x04)
 		{
 			*SerialPort[serialPortName].Register.rUCSRB = 
@@ -156,18 +148,16 @@ void SerialPort_Open(ESPName_t serialPortName, SPDescriptor_t *serialPortConfig)
 		*SerialPort[serialPortName].Register.rUCSRC = 
 			(((serialPortConfig->DataLength - 5) & 0x03) << 
 			   SerialPort[serialPortName].Bit.bUCSZ0) |
-		// --->Ustalanie liczby bitów stopu
+		// --->Stop bits length
 			 ((serialPortConfig->StopBits - 1) << 
 			   SerialPort[serialPortName].Bit.bUSBS) |
-		// --->Ustalanie parzystości
+		// --->Parity
 			  (serialPortConfig->Parity << 
 			   SerialPort[serialPortName].Bit.bUPM0) |
-		// --->Ustalanie trybu pracy
+		// --->Work  mode
 			  (serialPortConfig->SyncMode << 
 			   SerialPort[serialPortName].Bit.bUMSEL);
 
-		// W zależności od trybu synchroniczności
-		// mam rożne reakcje na zbocza.
 		if (serialPortConfig->SyncMode == SPSM_SYNCHRONOUS)
 		{
 			// --->Ustalanie zbocza sygnału
@@ -175,13 +165,12 @@ void SerialPort_Open(ESPName_t serialPortName, SPDescriptor_t *serialPortConfig)
 				(serialPortConfig->Edge << SerialPort[serialPortName].Bit.bUCPOL);
 		}
 
-		// Tryb podwójnej prędkości działa tylko w trybie asynchronicznym
 		if (serialPortConfig->SpeedMode == SPSM_DOUBLE)
 		{
-			// Tryb synchroniczny
+			// Synchronous mode
 			*SerialPort[serialPortName].Register.rUCSRC |= 
 				_BV(SerialPort[serialPortName].Bit.bUMSEL);	
-			// Tryb podwójnej prędkości	
+			// Double speed mode	
 			*SerialPort[serialPortName].Register.rUCSRA |= 
 				_BV(SerialPort[serialPortName].Bit.bU2X);
 			ubrr = 
@@ -190,10 +179,10 @@ void SerialPort_Open(ESPName_t serialPortName, SPDescriptor_t *serialPortConfig)
 		}
 		else if (serialPortConfig->SpeedMode == SPSM_NORMAL)
 		{
-			// Tryb asynchroniczny
+			// Asynchronous mode
 			*SerialPort[serialPortName].Register.rUCSRC &= 
 				~_BV(SerialPort[serialPortName].Bit.bUMSEL); 	
-			// Tryb normalnej prędkości
+			// Normal speed mode
 			*SerialPort[serialPortName].Register.rUCSRA &= 
 				~_BV(SerialPort[serialPortName].Bit.bU2X); 	
 			ubrr = 
@@ -201,20 +190,17 @@ void SerialPort_Open(ESPName_t serialPortName, SPDescriptor_t *serialPortConfig)
 				serialPortConfig->BaudRate - 1;
 		}
 
-		// Ustalanie parametrów transmisji
-		// --->Ustalanie prędkości transmisji
+		// Speed setting		
 		*SerialPort[serialPortName].Register.rUBRRH = (uint8_t) (ubrr >> 8);
 		*SerialPort[serialPortName].Register.rUBRRL = (uint8_t) ubrr;
 
-		// Aktywacja nadajnika/odbiornika
-		
-		// Aktywacja odbiornika
+		// Receiver activation
 		*SerialPort[serialPortName].Register.rUCSRB |= 
 			_BV(SerialPort[serialPortName].Bit.bRXEN) |
-		// Aktywacja nadajnika
+		// Transmitter activation
 			_BV(SerialPort[serialPortName].Bit.bTXEN);
 			
-		// Aktywacja przerwań
+		// IRQ activation
 		if (SerialPort[serialPortName].UsartDescriptor->IsIrqEnabled)
 		{
 			*SerialPort[serialPortName].Register.rUCSRB |=
@@ -222,81 +208,58 @@ void SerialPort_Open(ESPName_t serialPortName, SPDescriptor_t *serialPortConfig)
 				_BV(SerialPort[serialPortName].Bit.bUDRIE);
 		}
 			
-		// Status portu
+		// Port status
 		SerialPort[serialPortName].IsPortOpen = true;
 	}	
 }
 
 /*----------------------------------------------------------------------------*/
-/**
- * @brief    Zamykanie portu szeregowego
- * @param    serialPortName : nazwa portu
- * @retval   Brak
- */
 void SerialPort_Close(ESPName_t serialPortName)
 {
-	if (IS_SP_EXIST(serialPortName))
+	if (IS_SP_EXIST(serialPortName) &&
+	    SerialPort[serialPortName].IsPortOpen)
 	{
-		// Jeśli port był otwarty....
-		if (SerialPort[serialPortName].IsPortOpen)
-		{
-			// zostanie zamknięty
-			*SerialPort[serialPortName].Register.rUCSRB &= ~(
-				// Dezaktywacja odbiornika
-				_BV(SerialPort[serialPortName].Bit.bRXEN) | 
-				// Dezaktywacja nadajnika	
-				_BV(SerialPort[serialPortName].Bit.bTXEN)); 		
-			SerialPort[serialPortName].IsPortOpen = false;
-		}
+		*SerialPort[serialPortName].Register.rUCSRB &= ~(
+			// Receiver deactivation
+			_BV(SerialPort[serialPortName].Bit.bRXEN) | 
+			// Transmitter deactivation	
+			_BV(SerialPort[serialPortName].Bit.bTXEN)); 		
+		SerialPort[serialPortName].IsPortOpen = false;
 	}
 }
 
 /*----------------------------------------------------------------------------*/
-/**
- * @brief    Wysyłanie znaku bez przerwania
- * @param    serialPortName : nazwa portu
- * @param    character : znak do wysłania
- * @retval   Brak
- */
 void SerialPort_SendChar(ESPName_t serialPortName, uint8_t character)
 {
 	if (SerialPort[serialPortName].IsPortOpen &&
 	    IS_SP_EXIST(serialPortName) &&
 		!SerialPort[serialPortName].UsartDescriptor->IsIrqEnabled)
 	{
-		// Czekanie na pusty bufor nadawczy
+		// Waiting for ready buffer
 		while (!(*SerialPort[serialPortName].Register.rUCSRA &
 		       _BV(SerialPort[serialPortName].Bit.bUDRE)));
 		
-		// Wysłanie znaku
 		*SerialPort[serialPortName].Register.rUDR = character;
 	}
 }
 
 /*----------------------------------------------------------------------------*/
-/**
- * @brief    Wysyłanie znaku z przerwaniem
- * @param    serialPortName : nazwa portu
- * @param    character : znak do wysłania
- * @retval   Brak
- */
 void SerialPort_SendChar_Irq(ESPName_t serialPortName, uint8_t character)
 {
-	uint8_t tmphead;				// Tymczasowa głowa
+	uint8_t tmphead;
 	
 	if (IS_SP_EXIST(serialPortName) &&
 	    SerialPort[serialPortName].UsartDescriptor->IsIrqEnabled)
 	{		
-		// Aktywacja przerwania
+		// IRQ activation
 		*SerialPort[serialPortName].Register.rUCSRB |=
 			_BV(SerialPort[serialPortName].Bit.bUDRIE);
 		
-		// Obliczanie indeksu bufora
+		// Buffer index calculation
 		tmphead = (SerialPort[serialPortName].TxHead + 1 ) % SP_TX_BUFF_SIZE; 
-		// Czekanie na wolne miejsce w buforze
+		// Ready for buffer
 		while (tmphead == SerialPort[serialPortName].TxTail);
 
-		// Uzupełnianie bufora
 		SerialPort[serialPortName].TxBuffer[tmphead] = character;           
 		SerialPort[serialPortName].TxHead = tmphead;
 	}	
@@ -304,21 +267,21 @@ void SerialPort_SendChar_Irq(ESPName_t serialPortName, uint8_t character)
 
 /*----------------------------------------------------------------------------*/
 /**
- * @brief    Odbieranie znaku bez przerwania
- * @param    serialPortName : nazwa portu
- * @param    timeout: czas oczekiwania na dane w ms
- * @retval   Odebrany znak (-1 to brak znaku)
+ * @brief    Receives character without IRQ
+ * @param    serialPortName : serial port name
+ * @param    timeout: receive timeout in ms
+ * @retval   Receive character (-1 no data)
  */
 int16_t SerialPort_ReceiveChar(ESPName_t serialPortName, uint16_t timeout)
 {
-	uint8_t udr = -1;				// Odebrany bajt
-	uint16_t timer = timeout;		// Timer oczekiwania na dane
-	bool isDataReady = false;		// Flaga oznaczająca odebranie danych
+	uint8_t udr = -1;
+	uint16_t timer = timeout;
+	bool isDataReady = false;
 	
 	if (IS_SP_EXIST(serialPortName) &&
 	    !SerialPort[serialPortName].UsartDescriptor->IsIrqEnabled)
 	{
-		// Czekanie na dane
+		// Waiting for data
 		while (!(isDataReady = *SerialPort[serialPortName].Register.rUCSRA & 
 			  _BV(SerialPort[serialPortName].Bit.bRXC)) && timer)
 		{
@@ -326,18 +289,15 @@ int16_t SerialPort_ReceiveChar(ESPName_t serialPortName, uint16_t timeout)
 			SerialPortController->Delay(1);
 		}
 
-		// Czy są jakieś odebrane dane?
 		if (isDataReady)
 		{
 			SerialPort[serialPortName].UsartDescriptor->ReceiveStatus =
 				SerialPort_GetRcvStatus(*SerialPort[serialPortName].Register.rUCSRA);
 			
-			// Odczyt danej z bufora
 			udr = *SerialPort[serialPortName].Register.rUDR; 		
 		}
 		else
 		{
-			// Timeout
 			if (!timer)
 			{				
 				SerialPort[serialPortName].UsartDescriptor->ReceiveStatus =
@@ -352,21 +312,15 @@ int16_t SerialPort_ReceiveChar(ESPName_t serialPortName, uint16_t timeout)
 }
 
 /*----------------------------------------------------------------------------*/
-/**
- * @brief    Odbieranie znaku w przerwaniu
- * @param    serialPortName : nazwa portu
- * @param    timeout: czas oczekiwania na dane w ms
- * @retval   Odebrany znak (-1 to brak znaku)
- */
 int16_t SerialPort_ReceiveChar_Irq(ESPName_t serialPortName, uint16_t timeout)
 {
-	uint8_t udr = -1; 				// Odebrany bajt
-	uint16_t timer = timeout;		// Timer oczekiwania na dane
-
+	uint8_t udr = -1;
+	uint16_t timer = timeout;
+	
 	if (IS_SP_EXIST(serialPortName) &&
 	    SerialPort[serialPortName].UsartDescriptor->IsIrqEnabled)
 	{
-		// Czekanie na znak
+		// Waiting for data
 		while (!(SerialPort[serialPortName].ReceivedDataLength =
 			   SerialPort[serialPortName].RxHead -
 			   SerialPort[serialPortName].RxTail) &&
@@ -376,13 +330,12 @@ int16_t SerialPort_ReceiveChar_Irq(ESPName_t serialPortName, uint16_t timeout)
 			SerialPortController->Delay(1);
 		}
 			
-		// Czy zostało coś odebrane?
+		// Checks if data is received.
 		if (SerialPort[serialPortName].ReceivedDataLength)
 		{
 			SerialPort[serialPortName].RxTail = 
 				(SerialPort[serialPortName].RxTail + 1 ) % SP_RX_BUFF_SIZE;
 				
-			// Zapis odebranej danej do bufora
 			udr = SerialPort[serialPortName].
 				RxBuffer[SerialPort[serialPortName].RxTail];
 			SerialPort[serialPortName].UsartDescriptor->ReceiveStatus =
@@ -391,7 +344,6 @@ int16_t SerialPort_ReceiveChar_Irq(ESPName_t serialPortName, uint16_t timeout)
 		}
 		else
 		{
-			// Timeout
 			if (!timer)
 			{
 				SerialPort[serialPortName].UsartDescriptor->ReceiveStatus =
@@ -406,23 +358,12 @@ int16_t SerialPort_ReceiveChar_Irq(ESPName_t serialPortName, uint16_t timeout)
 }
 
 /*----------------------------------------------------------------------------*/
-/**
- * @brief    Zwracanie liczby bajtów w buforze odbiorczym
- * @param    serialPortName : nazwa portu
- * @retval   Liczba bajtów czekających w buforze
- */
 uint16_t SerialPort_CountOfBytes(ESPName_t serialPortName)
 {
 	return SerialPort[serialPortName].ReceivedDataLength;
 }
 
 /*----------------------------------------------------------------------------*/
-/**
- * @brief    Zwracanie liczby bajtów w buforze odbiorczym
- * @param    serialPortName : nazwa portu
- * @param    offset : przesunięcie w buforze
- * @retval   Wskażnik do bufora odczytu
- */
 uint8_t* SerialPort_ReadBytes(ESPName_t serialPortName, 
                               uint16_t offset)
 {
@@ -431,24 +372,19 @@ uint8_t* SerialPort_ReadBytes(ESPName_t serialPortName,
 
 /*----------------------------------------------------------------------------*/
 /**
- * @brief    Obsługa przerwania od odbioru
- * @param    serialPortName : nazwa portu
- * @retval   Brak
+ * @brief    Receive handler
+ * @param    serialPortName : serial port name
+ * @retval   None
  */
-void SerialPort_ReceiveHandler(ESPName_t serialPortName)
+static void SerialPort_ReceiveHandler(ESPName_t serialPortName)
 {
-	uint8_t data;					// Odebrany bajt
+	uint8_t data;
 
 	if (IS_SP_EXIST(serialPortName))
 	{		
-		// Pobieranie statusu odczytu
 		SerialPort[serialPortName].UsartDescriptor->ReceiveStatus = 
 			SerialPort_GetRcvStatus(*SerialPort[serialPortName].Register.rUCSRA);
-		
-		// Pobranie danej
 		data = *SerialPort[serialPortName].Register.rUDR;
-		
-		// Obliczanie indeksu
 		SerialPort[serialPortName].RxHead = 
 			(SerialPort[serialPortName].RxHead + 1 ) % SP_RX_BUFF_SIZE;      
 		
@@ -465,9 +401,9 @@ void SerialPort_ReceiveHandler(ESPName_t serialPortName)
 
 /*----------------------------------------------------------------------------*/
 /**
- * @brief    Obsługa przerwania od odbioru USART0
- * @param    Brak
- * @retval   Brak
+ * @brief    Receive IRQ handler for USART0
+ * @param    None
+ * @retval   None
  */
 ISR(USART0_RX_IRQ)
 {
@@ -476,9 +412,9 @@ ISR(USART0_RX_IRQ)
 
 /*----------------------------------------------------------------------------*/
 /**
- * @brief    Obsługa przerwania od odbioru USART1
- * @param    Brak 
- * @retval   Brak
+ * @brief    Receive IRQ handler for USART1
+ * @param    None 
+ * @retval   None
  */
 #ifdef SPN_USART1
 ISR(USART1_RX_IRQ)
@@ -489,21 +425,20 @@ ISR(USART1_RX_IRQ)
 
 /*----------------------------------------------------------------------------*/
 /**
- * @brief    Obsługa przerwania od nadawania
- * @param    serialPortName : nazwa portu
- * @retval   Brak
+ * @brief    Transmit handler
+ * @param    serialPortName : serial port name
+ * @retval   None
  */
 void SerialPort_TransmitHandler(ESPName_t serialPortName)
 {
-	uint8_t tmptail;				// Tymczasowy ogon
+	uint8_t tmptail;
 
 	if (IS_SP_EXIST(serialPortName))
 	{
-		// Sprawdzanie czy wszystkie dane zostały wysłane
+		// Check if all data was sent.
 		if (SerialPort[serialPortName].TxHead != 
 			SerialPort[serialPortName].TxTail)
 		{
-			// Obliczanie indeksu bufora
 			tmptail = (SerialPort[serialPortName].TxTail + 1) % SP_TX_BUFF_SIZE;
 			SerialPort[serialPortName].TxTail = tmptail;      
 		
@@ -512,7 +447,7 @@ void SerialPort_TransmitHandler(ESPName_t serialPortName)
 		}
 		else
 		{
-			// Wyłączenie przerwania
+			// IRQ deactivation
 			*SerialPort[serialPortName].Register.rUCSRB &= 
 				~_BV(SerialPort[serialPortName].Bit.bUDRIE);         
 		}
@@ -521,9 +456,9 @@ void SerialPort_TransmitHandler(ESPName_t serialPortName)
 
 /*----------------------------------------------------------------------------*/
 /**
- * @brief    Obsługa przerwania od nadawania dla USART0
- * @param    Brak
- * @retval   Brak
+ * @brief    IRQ handler for USART0 transmission
+ * @param    None
+ * @retval   None
  */
 ISR(USART0_TX_IRQ)
 {
@@ -538,34 +473,19 @@ ISR(USART1_TX_IRQ)
 #endif								/* SPN_USART1 */
 
 /*----------------------------------------------------------------------------*/
-/**
- * @brief    Funkcja wysyłająca pojedynczy znak
- * @param    serialPortName : nazwa portu
- * @param    _char : dana do wysłania
- * @retval   Brak
- */
 void SerialPort_TransmitChar(ESPName_t serialPortName, uint8_t _char)
 {
-	if (SerialPort[serialPortName].UsartDescriptor->
-	IsIrqEnabled)
+	if (SerialPort[serialPortName].UsartDescriptor->IsIrqEnabled)
 	{
-		// Funkcja printf z użyciem przerwania
 		SerialPort_SendChar_Irq(serialPortName, _char);
 	}
 	else
 	{
-		// Funkcja printf bez użycia przerwania
 		SerialPort_SendChar(serialPortName, _char);
 	}
 }
 
 /*----------------------------------------------------------------------------*/
-/**
- * @brief    Funkcja wysyłająca tekst
- * @param    serialPortName : nazwa portu
- * @param    text : wskaźnik do tekstu
- * @retval   Brak
- */
 void SerialPort_TransmitText(ESPName_t serialPortName, uint8_t* text)
 {
 	while(*text)
@@ -576,10 +496,10 @@ void SerialPort_TransmitText(ESPName_t serialPortName, uint8_t* text)
 
 /*----------------------------------------------------------------------------*/
 /**
- * @brief    Funkcja wysyłająca do obsługi funkcji printf
- * @param    data : dana do wysłania
- * @param    stream : strumień wysyłajacy
- * @retval   Kod funkcji (0 - wszystko OK)
+ * @brief    printf support function
+ * @param    data : data to send
+ * @param    stream : transmitting stream
+ * @retval   Function code (0 - success)
  */
 int SerialPort_Transmit(char data, FILE* stream)
 {
@@ -592,4 +512,4 @@ int SerialPort_Transmit(char data, FILE* stream)
 	return 0;
 }
 
-/******************* (C) COPYRIGHT 2013 HENIUS *************** KONIEC PLIKU ***/
+/******************* (C) COPYRIGHT 2013 HENIUS *************** END OF FILE ****/

@@ -4,39 +4,40 @@
  * @author   HENIUS (Paweł Witak)
  * @version  1.1.2
  * @date     10/04/2013
- * @brief    Obsługa czujnika temperatury na 1-Wire
+ * @brief    Driver of 1-Wire thermometer
  *******************************************************************************
  *
  * <h2><center>COPYRIGHT 2013 HENIUS</center></h2>
  */
 
-/* Sekcja include ------------------------------------------------------------*/
+/* Include section -----------------------------------------------------------*/
 
-// --->Pliki systemowe
+// --->System files
 
 #include <stdint.h>
 #include <stdbool.h>
 #include <util/delay.h>
 
-// --->Pliki użytkownika
+// --->User files
 
 #include "OWIMaster.h"
 #include "OWIThermometer.h"
 #include "OWICrc.h"
 
-/* Sekcja zmiennych,makr i stałych -------------------------------------------*/
+/* Variable, macros and constants section ------------------------------------*/
 
-// --->Zmienne
+// --->Variables
 
-OWIThermoCtrl_t *Thermometers;	/*!< Wskaźnik do tablicy urządzeń 1-Wire */
-/*!< Timer oczekiwania na zakończenie konwersji temperatury */
-uint16_t ThermDelayTimer;	
-/*! Czas oczekiwania na zakończenie konwersji temperatury */	
-uint16_t ThermoDelay;			
-/*!< Timer oczekiwania na rozpoczęcie kolejnego pomiaru temperatury */
-uint16_t ThermoIntervalTimer;
-uint16_t ThermoInterval;			/*!< Czas oczekiwania na kolejny pomiar */
-/*! Lista kodów rodziny termometrów */
+static OWIThermoCtrl_t *Thermometers;		/*!< Table of 1-Wire devices */
+/*!< Waiting timer for temperature ready */
+static uint16_t ThermDelayTimer;	
+/*! Waiting time for temperature ready */	
+static uint16_t ThermoDelay;			
+/*!< Waiting timer for next temperature measurement */
+static uint16_t ThermoIntervalTimer;
+/*! Waiting time for next measurement */
+static uint16_t ThermoInterval;
+/*! Codes of thermometers */
 EOWIFamily_t ThermoDeviceFC[] =		
 {
 	OWIF_DS18B20,
@@ -45,25 +46,19 @@ EOWIFamily_t ThermoDeviceFC[] =
 	OWIF_EOL
 };
 
-/* Sekcja funkcji ------------------------------------------------------------*/
+/* Function section ----------------------------------------------------------*/
 
 /*----------------------------------------------------------------------------*/
-/**
- * @brief    Inicjalizacja czujnika temperatury na 1-Wire
- * @param    *thermometers : wskaźnik tablicy czujników temperatury
- * @retval   Brak
- */
 void OWIThermo_Init(OWIThermoCtrl_t *thermometers)
 {
-	// Pamięć na konfigurację
 	OWIThermoConfig_t configuration;		
 	
 	Thermometers = thermometers;
 		
-	// Pobieranie adresów urządzeń
+	// Gets device addresses.
 	if (Thermometers->MaxAmountOfDevices == 1)
 	{
-		// Na magistrali jest tylko jeden czujnik.
+		// Only one sensor on the bus.
 		if (OWIMaster_ReadRomCode(&Thermometers->Devices[0].ROMCode) &&
 		    OWIMaster_IsFamilyCodeExist(
 				ThermoDeviceFC, 
@@ -80,7 +75,7 @@ void OWIThermo_Init(OWIThermoCtrl_t *thermometers)
 								  ThermoDeviceFC);								  
 	}
 	
-	// Przygotowanie do ustawiania rozdzielczości pomiaru
+	// Measurement resolution setting
 	OWIMaster_SkipRom();
 	configuration.ConfigReg.Resolution = Thermometers->Resolution;
 	ThermoDelay = OWI_TEMP_CONV_TIME / (0x08 >> Thermometers->Resolution);
@@ -93,37 +88,37 @@ void OWIThermo_Init(OWIThermoCtrl_t *thermometers)
 		ThermoInterval = Thermometers->RepetitionTime - ThermoDelay;
 	}
 	
-	// Ustawianie timerów
+	// Timer settings
 	ThermoDelay /= Thermometers->TaskTime;
 	ThermoInterval /= Thermometers->TaskTime;
 	ThermDelayTimer = ThermoDelay;
 	ThermoIntervalTimer = ThermoInterval;
 	
-	// Właściwy zapis konfiguracji
 	OWIThermo_WriteConfig(&configuration, 0);	
 }
 
 /*----------------------------------------------------------------------------*/
 /**
- * @brief    Konwersja temperatury
- * @param    *thermMem : wskaźnik do pamięci czujnika
- * @param    family : typ czujnika
- * @retval   Temperatura (z uwzględnieniem znaku)
+ * @brief    Convert the temperature
+ * @param    *thermMem : sensor memory pointer
+ * @param    family : sensor type
+ * @retval   Temperature (with sign)
  */
-int16_t OWITherm_ConvertTemp(OWIThermoMem_t *thermMem, EOWIFamily_t family)
+static int16_t OWITherm_ConvertTemp(OWIThermoMem_t *thermMem,
+                                    EOWIFamily_t family)
 {
-	uint16_t bitMask = 0;			// Maska dla temperatury
+	uint16_t bitMask = 0;
 	
 	switch (family)
 	{
-		// --->Czujniki programowalne
+		// --->Programable sensors
 		case OWIF_DS18B20:
 		case OWIF_DS1822:
 			bitMask = 0x07FF;
 		
 			break;
 		
-		// --->Czujniki o wysokiej rozdzielczości
+		// --->Sensors with high resolutions
 		case OWIF_DS18S20:
 			bitMask = 0x00FF;
 		
@@ -139,20 +134,14 @@ int16_t OWITherm_ConvertTemp(OWIThermoMem_t *thermMem, EOWIFamily_t family)
 }
 
 /*----------------------------------------------------------------------------*/
-/**
- * @brief    Odczyt pamięci czujnika
- * @param    *memory : wskaźnik do struktury pamięci
- * @oaram	 *romId : wskaźnik do adresu czujnika (0 - to Skip Rom)
- * @retval   Poprawność sumy kontrolnej pamięci (true - odczyt bez błędów)
- */
 bool OWIThermo_ReadMemory(OWIThermoMem_t *memory, OWIROMCode_t *romId)
 {
-	bool result = false;			// Wynik funkcji
+	bool result = false;
 	
-	// Inicjalizacja magistrali
+	// Bus initialization
 	if (OWIMaster_Init())
 	{
-		// Adresowanie czujnika
+		// Sensor addressing
 		if (!romId)
 		{
 			OWIMaster_SkipRom();
@@ -162,7 +151,7 @@ bool OWIThermo_ReadMemory(OWIThermoMem_t *memory, OWIROMCode_t *romId)
 			OWIMaster_SendRomCode(romId);
 		}
 		
-		// Właściwy zapis konfiguracji (zależne od typu czujnika)
+		// Configuration write (depends on sensor type)
 		OWIMaster_SendByte(OWITC_READ_MEM);
 		OWIMaster_ReadBytes(memory->All, sizeof(OWIThermoMem_t));
 		
@@ -174,18 +163,12 @@ bool OWIThermo_ReadMemory(OWIThermoMem_t *memory, OWIROMCode_t *romId)
 }
 
 /*----------------------------------------------------------------------------*/
-/**
- * @brief    Funkcja zapisu konfiguracji
- * @param    *config : wskaźnik konfiguracji
- * @oaram	 *romId : wskaźnik do adresu czujnika (0 - to Skip Rom)
- * @retval   Brak
- */
 void OWIThermo_WriteConfig(OWIThermoConfig_t *config, OWIROMCode_t *romId)
 {
-	// Inicjalizacja magistrali
+	// Bus initialization
 	if (OWIMaster_Init())
 	{
-		// Adresowanie czujnika
+		// Sensor addressing
 		if (!romId)
 		{
 			OWIMaster_SkipRom();
@@ -195,7 +178,7 @@ void OWIThermo_WriteConfig(OWIThermoConfig_t *config, OWIROMCode_t *romId)
 			OWIMaster_SendRomCode(romId);
 		}
 		
-		// Właściwy zapis konfiguracji (zależne od typu czujnika)
+		// Configuration write (depends on sensor type)
 		OWIMaster_SendByte(OWITC_WRITE_MEM);
 		OWIMaster_SendBytes(config->All, romId->Family == OWIF_DS18S20 ? 
 			sizeof(OWIThermoConfig_t) - 1 : sizeof(OWIThermoConfig_t));
@@ -203,34 +186,26 @@ void OWIThermo_WriteConfig(OWIThermoConfig_t *config, OWIROMCode_t *romId)
 }
 
 /*----------------------------------------------------------------------------*/
-/**
- * @brief    Odzcyt temperatury danego czujnika
- * @param    *romID : kod czujnika
- * @retval   Temperatura czujnika
- */
 int16_t OWIThermo_ReadTemperature(OWIROMCode_t *romID)
 {
-	OWIMaster_Init();				// Inicjalizacja magistrali
-	OWIThermoMem_t thermMem;		// Pamięć czujnika
-	int16_t temperature = 0;		// Odczytana temperatura
+	OWIMaster_Init();
 	
-	// W przypadku niepodania ID czujnika wysyłana jest komenda SKIM ROM.
+	OWIThermoMem_t thermMem;
+	int16_t temperature = 0;
+	
+	// SKIP ROM if no ID specified
 	if (!romID)
 	{
-		OWIMaster_SkipRom();		// Pominięcie adresu
-		
+		OWIMaster_SkipRom();		
 	}
 	else
 	{
-		// Podawanie adresu czujnika
 		OWIMaster_SendRomCode(romID);
 	}
 	
-	// Rozpoczęcie konwersji i czekanie na jej zakończenie
 	OWIMaster_SendByte(OWITC_START_CONV);
 	Thermometers->Delay_ms(ThermoDelay);
 	
-	// Odczyt pamięci
 	if (OWIThermo_ReadMemory(&thermMem, romID))
 	{
 		temperature = OWITherm_ConvertTemp(&thermMem, romID->Family);
@@ -240,48 +215,39 @@ int16_t OWIThermo_ReadTemperature(OWIROMCode_t *romID)
 }
 
 /*----------------------------------------------------------------------------*/
-/**
- * @brief    Funkcja obsługi pomiaru temperatury
- * @param    Brak
- * @retval   Brak
- */
 void OWIThermo_Handler(void)
 {
-	// Aktualny stan maszyny stanów
 	static EOWIThermoState_t currStates = OWITS_WAIT_FOR_NEXT;
-	// Flaga oznaczająca czy należy czytać pamięć podręczną
 	static bool readScratchpad = false;	
-	static uint8_t devNumber;		// Numer urządzenia
-	static uint8_t byteNumber;		// Numer odczytywanego bajtu	
-	// Pamięć czujnika temperatury
+	static uint8_t devNumber;
+	static uint8_t byteNumber;	
 	static OWIThermoMem_t thermMem;	
-	// Liczba urządzeń	
 	uint8_t amountOfDevice = 
 		Thermometers->AmountOfFoundDevices >= Thermometers->MaxAmountOfDevices ?
 		Thermometers->MaxAmountOfDevices : Thermometers->AmountOfFoundDevices;
 	
 	switch (currStates)
 	{
-		// Inicjalizacja pomiaru
+		// Measurement initialization
 		case OWITS_INIT:
 			currStates = OWITS_SKIP_ROM;						
-			OWIMaster_Init();		// Inicjalizacja magistrali 1-Wire
+			OWIMaster_Init();
 									
 			break;
 			
-		// Pomijanie ROM kodu
+		// Skip ROM code
 		case OWITS_SKIP_ROM:
 			if (!readScratchpad)
 			{
 				currStates = OWITS_START_CONV;
-				OWIMaster_SkipRom();	// Komenda SKIP ROM	
+				OWIMaster_SkipRom();
 			}
 			else
 			{
 				if (amountOfDevice == 1)
 				{
 					currStates = OWITS_READ_MEM_REQUEST;
-					OWIMaster_SkipRom();// Komenda SKIP ROM	
+					OWIMaster_SkipRom();	
 				}
 				else if (amountOfDevice > 1)
 				{
@@ -291,20 +257,17 @@ void OWIThermo_Handler(void)
 		
 			break;
 			
-		// Żądanie konwersji
+		// Conversion request
 		case OWITS_START_CONV:
-			currStates = OWITS_WAIT;	
-			// Rozpoczęcie konwersji	
+			currStates = OWITS_WAIT;
 			OWIMaster_SendByte(OWITC_START_CONV);	
 					
 			break;
 			
-		// Czekanie na zakończenie konwersji
+		// Waiting for conversion
 		case OWITS_WAIT:
 			if (!(--ThermDelayTimer))
 			{
-				// Czas minął, więc można przejść do kolejnego stanu i 
-				// roczpocząć proces odczytywania danych								
 				currStates = OWITS_INIT;				
 				ThermDelayTimer = ThermoDelay;;
 				readScratchpad = true;
@@ -312,7 +275,7 @@ void OWIThermo_Handler(void)
 		
 			break;
 		
-		// Wysyłanie adresu urządzenia
+		// Device address sending
 		case OWITS_MATCH_ROM:
 			OWIMaster_SendRomCode(&Thermometers->Devices[devNumber].ROMCode);
 			Thermometers->Devices[devNumber].IsExist = true;
@@ -320,7 +283,7 @@ void OWIThermo_Handler(void)
 		
 			break;
 		
-		// Żądanie odczytu temperatury
+		// Memory read request
 		case OWITS_READ_MEM_REQUEST:
 			currStates = OWITS_READ_MEM;
 			OWIMaster_SendByte(OWITC_READ_MEM);
@@ -329,7 +292,7 @@ void OWIThermo_Handler(void)
 		
 			break;
 		
-		// Odczyt pamięci podręcznej	
+		// Scratchpad read request
 		case OWITS_READ_MEM:
 			currStates = OWITS_READ_MEM;
 			thermMem.All[byteNumber] = OWIMaster_ReadByte(); 			
@@ -339,7 +302,7 @@ void OWIThermo_Handler(void)
 			{
 				ThermDelayTimer = ThermoDelay;
 				
-				// Liczenie CRC
+				// CRC calculation
 				Thermometers->Devices[devNumber].IsExist = 
 					!OWI_CalculateCRC(thermMem.All, sizeof(OWIThermoMem_t)) ? 
 						true : false;
@@ -367,18 +330,17 @@ void OWIThermo_Handler(void)
 		
 			break;	
 			
-		// Oczekiwanie na kolejny pomiar
+		// Waiting for next measurement
 		case OWITS_WAIT_FOR_NEXT:
 			if (!(--ThermoIntervalTimer))
 			{	
-				// Czas minął, więc można przejść do kolejnego stanu.
 				currStates = OWITS_INIT;
 				ThermoIntervalTimer = ThermoInterval;				
 			}
 		
 			break;
 		
-		// Nieznany stan	
+		// Unknown state	
 		default:
 			currStates = OWITS_INIT;
 		
@@ -386,4 +348,4 @@ void OWIThermo_Handler(void)
 	}
 }
 
-/******************* (C) COPYRIGHT 2013 HENIUS *************** KONIEC PLIKU ***/
+/******************* (C) COPYRIGHT 2013 HENIUS *************** END OF FILE ****/

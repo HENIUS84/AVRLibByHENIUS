@@ -4,7 +4,7 @@
  * @author   HENIUS (Paweł Witak)
  * @version  1.1.2
  * @date     23-10-2013
- * @brief    Obsługa transmisji po protokole HENBUS (plik nagłówkowy)
+ * @brief    Handler of HENBUS protocol (header file)
  *******************************************************************************
  *
  * <h2><center>COPYRIGHT 2013 HENIUS</center></h2>
@@ -13,85 +13,94 @@
 #ifndef  HENBUS_CONTROLLER_H
 #define  HENBUS_CONTROLLER_H
 
-/* Sekcja include ------------------------------------------------------------*/
+/* Include section------------------------------------------------------------*/
 
-// --->Pliki systemowe
+// --->System files
 
 #include <stdbool.h>
 #include <stdint.h>
 
-// --->Pliki użytkownika
+// --->User files
 
 #include "CommunicationController.h"
 #include "SerialPort.h"
 
-/* Sekcja stałych, makr i definicji ------------------------------------------*/
+/* Macros, constants and definitions section ---------------------------------*/
 
-// --->Stałe i makra
+// --->Macros and constants
 
-#define HENBUS_DATA_BUFF_SIZE	(100)	/*!< Rozmiar bufora odbiorczego */
-#define HENBUS_SOF				(':')	/*!< Znak początku ramki */
-#define HENBUS_EOF              ('#')	/*!< Znak końca ramki */
-#define HENBUS_TIMEOUT			(4000)	/*!< Timeout odbioru (w ms) */
-#define HENBUS_ASCII_CMD_SIZE	(3)		/*!< Rozmiar komendy ramki w 
-                                             trybie ASCII*/
+#define HENBUS_DATA_BUFF_SIZE	(100)	/*!< Receive buffer size */
+#define HENBUS_SOF				(':')	/*!< Start of Frame character */
+#define HENBUS_EOF              ('#')	/*!< End Of Frame character */
+#define HENBUS_TIMEOUT			(4000)	/*!< Receive timeout (in ms) */
+#define HENBUS_ASCII_CMD_SIZE	(3)		/*!< Frame size in ASCII mode */
 
-// Indeksy pól
+// Fields indexes
 
-/*! Rozmiar znacznika początku */
-#define HENBUS_SOF_LENGTH				(1)
-/* Indeks początku znacznika początku ramki */
-#define HENBUS_SOF_START_INDEX			(1)
-/*! Indeks końca znacznika początku ramki */
-#define HENBUS_SOF_END_INDEX			(HENBUS_SOF_START_INDEX + \
-                                         HENBUS_SOF_LENGTH - 1)
-/*! Rozmiar pola adresu */
+#define HENBUS_SOF_LENGTH		(1)			/*! Size of SOF fields */
+#define HENBUS_SOF_START_INDEX	(1)			/* Index of beginning of SOF field */
+/*! Index of end of SOF field */
+#define HENBUS_SOF_END_INDEX	(HENBUS_SOF_START_INDEX + \
+                                 HENBUS_SOF_LENGTH - 1)
+
+/*! Address field size */
 #ifdef COMM_BINARY_MODE
-#define HENBUS_ADDRES_LENGTH			(1)
+#define HENBUS_ADDRES_LENGTH	(1)
 #else
-#define HENBUS_ADDRES_LENGTH			(2)
+#define HENBUS_ADDRES_LENGTH	(2)
 #endif
-/*! Indeks początku pola adresu */
+/*! Index of beginning of Address field */
 #define HENBUS_ADDRESS_START_INDEX		(HENBUS_SOF_END_INDEX + 1)
-/*! Indeks końca pola adresu */
-#define HENBUS_ADDRESS_END_INDEX        (HENBUS_ADDRESS_START_INDEX + \
+/*! Index of end of Address field */
+#define HENBUS_ADDRESS_END_INDEX		(HENBUS_ADDRESS_START_INDEX + \
                                          HENBUS_ADDRES_LENGTH - 1)
-/*! Rozmiar pola komendy */
+/*! Size of command field */
 #ifdef COMM_BINARY_MODE
-#define HENBUS_CMD_LENGTH				(1)
+#define HENBUS_CMD_LENGTH		(1)
 #else
-#define HENBUS_CMD_LENGTH				(HENBUS_ASCII_CMD_SIZE)
+#define HENBUS_CMD_LENGTH		(HENBUS_ASCII_CMD_SIZE)
 #endif
-/*! Indeks początku pola komendy */
-#define HENBUS_CMD_START_INDEX			(HENBUS_ADDRESS_END_INDEX + 1)
-/*! Indeks końca pola komendy */
-#define HENBUS_CMD_END_INDEX			(HENBUS_CMD_START_INDEX + \
-                                         HENBUS_CMD_LENGTH - 1)
-/*! Rozmiar pola rozmiaru danych */
+/*! Index of beginning of Command field */
+#define HENBUS_CMD_START_INDEX	(HENBUS_ADDRESS_END_INDEX + 1)
+/*! Index of end of Command field */
+#define HENBUS_CMD_END_INDEX	(HENBUS_CMD_START_INDEX + \
+                                 HENBUS_CMD_LENGTH - 1)
+
+/*! Size of Data field */
 #ifdef COMM_BINARY_MODE
-#define HENBUS_DATA_SIZE_LENGTH			(1)
+#define HENBUS_DATA_SIZE_LENGTH	(1)
 #else
-#define HENBUS_DATA_SIZE_LENGTH			(2)
+#define HENBUS_DATA_SIZE_LENGTH	(2)
 #endif
-/*! Indeks początku pola rozmiaru danych */
+/*! Index of beginning of Data field */
 #define HENBUS_DATA_SIZE_START_INDEX	(HENBUS_CMD_END_INDEX + 1)
-/*! Indeks końca pola rozmiaru danych */
+/*! Index of end of Data field */
 #define HENBUS_DATA_SIZE_END_INDEX		(HENBUS_DATA_SIZE_START_INDEX + \
 	                                     HENBUS_DATA_SIZE_LENGTH - 1)
-/*! Indeks początku pola danych lub CRC */
+										 
+/*! Index of beginning of Data or CRC field */
 #define HENBUS_DATA_OR_CRC_START_INDEX	(HENBUS_DATA_SIZE_END_INDEX + 1)
-/*! Rozmiar pola sumy kontrolnej */
+/*! Size of CRC field */
 #ifdef COMM_BINARY_MODE
-#define HENBUS_CRC_LENGTH				(1)
+#define HENBUS_CRC_LENGTH		(1)
 #else
-#define HENBUS_CRC_LENGTH				(2)
+#define HENBUS_CRC_LENGTH		(2)
 #endif
 
-/* Sekcja deklaracji ---------------------------------------------------------*/
+/* Declaration section -------------------------------------------------------*/
 
-// --->Funkcje
+// --->Functions
 
-// Inicjalizacja kontrolera HENBUS
+/*----------------------------------------------------------------------------*/
+/**
+* @brief    HENBUS controller initialization
+* @param    wdFrame : watchdog frame from PC
+* @param    wdAnswerFrame : watchdog answer frame
+* @param    serialPortName : serial port name
+* @param    frameCallback : frame receive callback
+* @param    taskInterval : function repetition interval
+* @retval   Structure of controller
+*/
 CommController_t HENBUSCtrl_Init(const CommProtocolFrame_t* wdTestFrame,
                                  const CommProtocolFrame_t* wdAnswerFrame,
                                  ESPName_t serialPortName,

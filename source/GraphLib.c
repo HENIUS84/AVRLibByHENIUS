@@ -10,26 +10,26 @@
  * <h2><center>COPYRIGHT 2011 HENIUS</center></h2>
  */
 
-/* Sekcja include ------------------------------------------------------------*/
+/* Include section -----------------------------------------------------------*/
 
-// --->Pliki systemowe
+// --->System files
 
 #include <stdio.h>
 #include <string.h>
 #include <avr/pgmspace.h>
 
-// --->Pliki użytkownika
+// --->User files
 
 #include "GraphLib.h"
 
-/* Sekcja zmiennych ----------------------------------------------------------*/
+/* Variable section ----------------------------------------------------------*/
 
 /*! Tablica szerokości znaków */
 uint8_t CharsWidthTable[MAX_WORD_LENGTH];	
 /*! Wskaźnik do funkcji ustawiającej piksel */
 void (*SetPixel)(uint16_t x, uint16_t y, Color_t pixelColor);
 
-/* Sekcja funkcji ------------------------------------------------------------*/
+/* Function section ----------------------------------------------------------*/
 
 /*----------------------------------------------------------------------------*/
 /**
@@ -297,7 +297,7 @@ void GetCharsWidthTable(uint8_t *text,
 /*----------------------------------------------------------------------------*/
 /**
  * @brief    Pomiar długości aktualnie przetwarzanego łańcucha
- * @param    Brak
+ * @param    None
  * @retval   Długość łańcucha
  */
 uint16_t MeasureString(void)
@@ -459,7 +459,7 @@ Color_t Interpolate3Colors(Color_t colorA, Color_t colorB, Color_t colorC,
  * @brief    Rysowanie komponentu (z pamięci RAM) TextBlock
  * @param    *textBlock : obiekt komponentu
  * @param    *text : tekst
- * @retval   Brak
+ * @retval   None
  */
 void PutTextBlock(TextBlock_t *textBlock, uint8_t *text)
 {
@@ -642,7 +642,7 @@ void PutTextBlock(TextBlock_t *textBlock, uint8_t *text)
  * @brief    Rysowanie komponentu (z pamięci Flash) TextBlock
  * @param    *textBlock : obiekt komponentu
  * @param    *text : tekst
- * @retval   Brak
+ * @retval   None
  */
 #ifdef GL_AVR
 void PutTextBlock_P(const TextBlock_t *textBlock, uint8_t *text)
@@ -661,7 +661,7 @@ void PutTextBlock_P(const TextBlock_t *textBlock, uint8_t *text)
 /**
  * @brief    Rysowanie okręgu (z pamięci RAM)
  * @param    *circle : obiekt komponentu
- * @retval   Brak
+ * @retval   None
  */
 void PutCircle(Circle_t *circle)
 {
@@ -726,7 +726,7 @@ void PutCircle(Circle_t *circle)
 /**
  * @brief    Rysowanie okręgu (z pamięci Flash)
  * @param    *circle : obiekt komponentu
- * @retval   Brak
+ * @retval   None
  */
 void PutCircle_P(Circle_t *circle)
 {
@@ -743,7 +743,7 @@ void PutCircle_P(Circle_t *circle)
 /**
  * @brief    Rysowanie lini (z pamięci RAM)
  * @param    *line : obiekt komponentu
- * @retval   Brak
+ * @retval   None
  */
 void PutLine(Line_t *line)
 {
@@ -812,7 +812,7 @@ void PutLine(Line_t *line)
 /**
  * @brief    Rysowanie lini (z pamięci Flash)
  * @param    *line : obiekt komponentu
- * @retval   Brak
+ * @retval   None
  */
 void PutLine_P(Line_t *line)
 {
@@ -829,7 +829,7 @@ void PutLine_P(Line_t *line)
 /**
  * @brief    Rysowanie prostokąta (z pamięci RAM)
  * @param    *rectangle : obiekt komponentu
- * @retval   Brak
+ * @retval   None
  */
 void PutRectangle(Rectangle_t *rectangle)
 {
@@ -862,7 +862,7 @@ void PutRectangle(Rectangle_t *rectangle)
 /**
  * @brief    Rysowanie prostokąta (z pamięci Flash)
  * @param    *rectangle : obiekt komponentu
- * @retval   Brak
+ * @retval   None
  */
 void PutRectangle_P(Rectangle_t *rectangle)
 {
@@ -880,7 +880,7 @@ void PutRectangle_P(Rectangle_t *rectangle)
  * @brief    Rysowanie paska postępu (z pamięci RAM)
  * @param    *progressBar : obiekt komponentu
  * @param    value : aktualna wartość paska
- * @retval   Brak
+ * @retval   None
  */
 void PutProgressBar(ProgressBar_t *progressBar, uint16_t val)
 {
@@ -979,7 +979,7 @@ void PutProgressBar(ProgressBar_t *progressBar, uint16_t val)
  * @brief    Rysowanie paska postępu (z pamięci Flash)
  * @param    *progressBar : obiekt komponentu
  * @param    value : aktualna wartość paska
- * @retval   Brak
+ * @retval   None
  */
 #ifdef GL_AVR
 void PutProgressBar_P(ProgressBar_t *progressBar, uint16_t val)
@@ -1000,7 +1000,7 @@ void PutProgressBar_P(ProgressBar_t *progressBar, uint16_t val)
  * @param    *image : tablica z kodem obrazka
  * @param    x : współrzędna x lewego górnego rogu obrazka
  * @param    y : współrzędna y lewego górnego rogu obrazka
- * @retval   Brak
+ * @retval   None
  */
 void PutImage(uint8_t *image, int16_t x, int16_t y)
 {
@@ -1054,7 +1054,7 @@ void PutImage(uint8_t *image, int16_t x, int16_t y)
  * @param    *image : tablica z kodem obrazka
  * @param    x : współrzędna x lewego górnego rogu obrazka
  * @param    y : współrzędna y lewego górnego rogu obrazka
- * @retval   Brak
+ * @retval   None
  */
 #ifdef GL_AVR
 void PutImage_P(uint8_t *image, int16_t x, int16_t y)
@@ -1105,4 +1105,4 @@ void PutImage_P(uint8_t *image, int16_t x, int16_t y)
 }
 #endif
 
-/******************* (C) COPYRIGHT 2011 HENIUS *************** KONIEC PLIKU ***/
+/******************* (C) COPYRIGHT 2011 HENIUS *************** END OF FILE ****/

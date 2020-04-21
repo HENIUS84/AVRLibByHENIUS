@@ -4,41 +4,42 @@
  * @author   HENIUS (Pawe³ Witak)
  * @version  1.1.1
  * @date     23-10-2013
- * @brief    Obs³uga transmisji po protokole HENBUS
+ * @brief    Handler of HENBUS protocol
  *******************************************************************************
  *
  * <h2><center>COPYRIGHT 2013 HENIUS</center></h2>
  */
 
-/* Sekcja include ------------------------------------------------------------*/
+/* Include section -----------------------------------------------------------*/
 
-// --->Pliki systemowe
+// --->System files
 
 #include <stdint.h>
 #include <stdio.h>
 #include <avr/io.h>
 #include <string.h>
 
-// --->Pliki u¿ytkownika
+// --->User files
 
 #include "HENBUSController.h"
 #include "SerialPort.h"
 #include "Utils.h"
 
-/* Sekcja zmiennych ----------------------------------------------------------*/
+/* Variable section ----------------------------------------------------------*/
 
-/*! Ramka testowa Watchdog'a z PC */
+/*! Test frame of Watchdog from PC */
 CommProtocolFrame_t WatchdogTestFrame;
-/*! Ramka odpowiedzi z zasilacza */
+/*! Response frame of power supply */
 CommProtocolFrame_t WatchdogAnswerFrame;
-ESPName_t SerialPortName;			/*! Nazwa portu szeregowego */
-CommController_t Controller;		/*! Struktura kontrolera */
+ESPName_t SerialPortName;			/*! Serial port name */
+CommController_t Controller;		/*! Communication controller */
+/*! Data buffer */
 uint8_t DataBuffer[HENBUS_DATA_BUFF_SIZE];
 #ifndef COMM_BINARY_MODE
-/*! Tabela z odebran¹ komend¹ */
+/*! Table with received command */
 uint8_t CurrentCommand[HENBUS_ASCII_CMD_SIZE + 1];
 #endif
-/*! Aktualnie odebrana ramka */
+/*! Currently received frame */
 CommProtocolFrame_t CurrentFrame =
 {
 #ifndef COMM_BINARY_MODE	
@@ -46,23 +47,22 @@ CommProtocolFrame_t CurrentFrame =
 #endif	
 	.Data        = DataBuffer
 };
-/*! WskaŸnik do funkcji generowanej na odebranie ramki */
+/*! Pointer to frame received callback */
 void (*FrameReceivedCallback)(CommProtocolFrame_t*);
-/*! Czas timeout'u (w liczbie wywo³añ funkcji obs³ugi protoko³u) */
+/*! Timeout (protocol handler repetitions) */
 uint16_t TimeoutTime;
 
-/* Sekcja funkcji ------------------------------------------------------------*/
+/* Function section ----------------------------------------------------------*/
 
 /*----------------------------------------------------------------------------*/
 /**
-* @brief    Wysy³anie danej w formacie ASCI HEX po porcie szeregowym
-* @param    wdFrame : ramka Watchdog'a
-* @retval   Brak
+* @brief    Sends data in ASCII HEX over serial port
+* @param    wdFrame : watchdog frame
+* @retval   None
 */
 #ifndef COMM_BINARY_MODE
-void HENBUSCtrl_SendAsciHexByte(uint8_t data)
+static void HENBUSCtrl_SendAsciHexByte(uint8_t data)
 {
-	// Tablica na wartoœæ ASCII HEX
 	uint8_t asciiHex[3] = { 0, 0 };
 	
 	ByteToAsciiHex(asciiHex, data);
@@ -73,108 +73,103 @@ void HENBUSCtrl_SendAsciHexByte(uint8_t data)
 
 /*----------------------------------------------------------------------------*/
 /**
-* @brief    Wysy³anie ramki protoko³u
-* @param    frame : wskaŸnik do ramki
-* @retval   Brak
+* @brief    Sends frame
+* @param    frame : pointer to the frame
+* @retval   None
 */
-void HENBUSCtrl_SendFrame(CommProtocolFrame_t* frame)
+static void HENBUSCtrl_SendFrame(CommProtocolFrame_t* frame)
 {
-	uint8_t index;					// Indeks pomocniczy
-	// Flaga okreœlaj¹ca tryb binarny
+	uint8_t index;
 	
-	// Jeœli jest co wys³aæ
 	if (frame)
 	{
-		// --------------------- Wysy³anie ramki -------------------------------
+		// Frame sending
 		
-		// --->Pocz¹tek ramki - 1 bajt
+		// --->SOF - 1 byte
 		SerialPort_TransmitChar(SerialPortName, HENBUS_SOF);
 		
-		// --->Adres urz¹dzenia
+		// --->Device address
 #ifdef COMM_BINARY_MODE
-		// W trybie BINARY 1 bajt
+		// BINARY mode - 1 byte
 		SerialPort_TransmitChar(SerialPortName, frame->Address);
 #else		
-		// W trybie ASCII 2 bajty
+		// ASCII mode - 2 bytes
 		HENBUSCtrl_SendAsciHexByte(frame->Address);
 #endif
 		
-		// --->Kod komendy
+		// --->Command code
 #ifdef COMM_BINARY_MODE
-		// W trybie BINARY 1 bajt
+		// BINARY mode - 1 byte
 		SerialPort_TransmitChar(SerialPortName, frame->CommandID);
 #else
-		// W trybie ASCII zmienna liczba bajtów 
+		// ASCII mode - variable bytes
 		SerialPort_TransmitText(SerialPortName, frame->CommandName);
 #endif
 		
-		// --->Liczba bajtów danych
+		// --->Data size
 #ifdef COMM_BINARY_MODE
-		// W trybie BINARY 1 bajt
+		// BINARY mode - 1 byte
 		SerialPort_TransmitChar(SerialPortName, frame->DataSize);
 #else
-		// W trybie ASCII 2 bajty
+		// ASCII mode - 2 bytes
 		HENBUSCtrl_SendAsciHexByte(frame->DataSize);
 #endif
 		
-		// --->Pole danych
+		// --->Data field
 		if (frame->DataSize > 0)
 		{
-			// Wysy³anie danych - frame->DataSize * 2 bajtów
+			// Data sending - frame->DataSize * 2 bytes
 			for (index = 0; index < frame->DataSize; index++)
 			{
 #ifdef COMM_BINARY_MODE
-				// W trybie BINARY 1 bajt * DataSize
+				// BINARY mode - 1 byte * DataSize
 				SerialPort_TransmitChar(SerialPortName, frame->Data[index]);
 #else
-				// W trybie ASCII 2 bajty * DataSize
+				// ASCII mode - 2 bytes * DataSize
 				HENBUSCtrl_SendAsciHexByte(frame->Data[index]);
 #endif
 			}
 			
-			// --->Wysy³anie sumy kontrolnej - 2 bajty
+			// --->CRC - 2 bytes
 #ifdef COMM_BINARY_MODE
-			// W trybie 1 bajt
+			// BINARY mode - 1 byte
 			SerialPort_TransmitChar(
 				SerialPortName,
 				CRC8(frame->Data, frame->DataSize));
 #else
-			// W trybie ASCII 2 bajty
+			// ASCII mode - 2 bytes
 			HENBUSCtrl_SendAsciHexByte(CRC8(frame->Data, frame->DataSize));
 #endif
 		}
 		
-		// --->Koniec ramki - 1 bajt
+		// --->EOF - 1 byte
 		SerialPort_TransmitChar(SerialPortName, HENBUS_EOF);
 	}
 }
 
 /*----------------------------------------------------------------------------*/
 /**
-* @brief    Funkcja obs³ugi protoko³u HENBUS
-* @param    Brak
-* @retval   Status po³¹czenia (true - po³¹czony)
+* @brief    HENBUScontroller handler
+* @param    None
+* @retval   Connection state (true - connected)
 */
-bool HENBUSCtrl_Handler()
+static bool HENBUSCtrl_Handler()
 {
-	// Aktualnie odebrany bajt
+	// Currently received byte
 	uint8_t currentByte = SerialPort_ReceiveChar_Irq(SerialPortName, 0);	
-	static uint8_t byteIdx = 0;		// Indeks bajtów
+	static uint8_t byteIdx = 0;		// Bytes index
 #ifndef COMM_BINARY_MODE
-	static uint8_t AsciiHexByte[2];	// Aktualny bajt ASCII HEX
+	static uint8_t AsciiHexByte[2];	// Current ASCII HEX byte
 #endif
-	// Indeks pocz¹tkowy i koñcowy aktualnego pola
+	// Beginning and end index of current field
 	static int8_t currentFieldStartIndex = 0, currentFieldEndIndex = 0;
-	// Indeks pocz¹tkowy i koñcowy pola danych
+	// Beginning and end index of data field
 	static uint8_t dataStartIndex = 0, dataEndIndex = 0;
-	// Indeks pocz¹tkowy i koñcowy pola CRC
-	static uint8_t crcStartIndex = 0, crcEndIndex = 0;
-	// Suma kontrolna aktualnej ramki
-	static uint8_t crcOfFrame = 0;
-	// Timer timeout'u
-	static uint16_t timeoutTimer = 1;
-	// Flaga okreœlaj¹ca po³¹czenie
-	static bool isConnected = false;
+	// Beginning and end index of CRC field
+	static uint8_t crcStartIndex = 0, crcEndIndex = 0;	
+	static uint8_t crcOfFrame = 0;			// CRC of current frame	
+	static uint16_t timeoutTimer = 1;		// Timeout timer	
+	static bool isConnected = false;		// Flag of connection status
 	
 	if (!--timeoutTimer)
 	{
@@ -182,37 +177,37 @@ bool HENBUSCtrl_Handler()
 		timeoutTimer = TimeoutTime;
 	}
 					
-	// --->Analiza bajtów
+	// --->Bytes analysis
 	
-	// Zapis bajt po bajcie ca³ej ramki
+	// Save of frame byte by byte
 	if(currentByte == HENBUS_SOF ||
 	   currentByte == HENBUS_EOF ||
 	   (currentByte >= 0 && byteIdx))
 	{
-		// Wykrywanie pocz¹tku ramki
+		// SOF detection
 		if (currentByte == HENBUS_SOF)
 		{
-			// Inicjalizacja odbioru ramki
+			// Frame receive initialization
 			CurrentFrame.Address = 0;
 			CurrentFrame.DataSize = 0;			
 			byteIdx = HENBUS_SOF_START_INDEX;
 			
-			// Indeksy pola adresu
+			// Indexes of Address field
 			currentFieldStartIndex = HENBUS_ADDRESS_START_INDEX;
 			currentFieldEndIndex = HENBUS_ADDRESS_END_INDEX;
 		}
 		
-		// Kompletowanie ramki
+		// Completing the frame 
 		if (byteIdx >= currentFieldStartIndex &&
 		    byteIdx <= currentFieldEndIndex)
 		{
-			// Jakie to pole?
+			// What is this field?
 								
-			if (// --->Pole adresu
+			if (// --->Address field
 				currentFieldStartIndex == HENBUS_ADDRESS_START_INDEX ||
-				// --->Pole rozmiaru danych
+				// --->Data size field
 				currentFieldStartIndex == HENBUS_DATA_SIZE_START_INDEX ||
-				// --->Pole CRC
+				// --->CRC field
 				currentFieldStartIndex == crcStartIndex)
 			{
 #ifndef COMM_BINARY_MODE
@@ -220,12 +215,12 @@ bool HENBUSCtrl_Handler()
 					currentByte;
 #endif					
 					
-				// Czy to ostatni znak pola?
+				// Is it last character?
 				if (byteIdx == currentFieldEndIndex)
 				{
-					// Jakie pole?
+					// What field?
 					
-					// --->Pole adresu
+					// --->Address field
 					if  (currentFieldStartIndex == HENBUS_ADDRESS_START_INDEX)
 					{						
 						CurrentFrame.Address =
@@ -235,11 +230,11 @@ bool HENBUSCtrl_Handler()
 							currentByte;
 #endif
 								
-						// Indeksy pola komendy
+						// Command field indexes
 						currentFieldStartIndex = HENBUS_CMD_START_INDEX;
 						currentFieldEndIndex = HENBUS_CMD_END_INDEX;
 					} else
-					// --->Pole rozmiaru danych
+					// --->Field of data size
 					if (currentFieldStartIndex == HENBUS_DATA_SIZE_START_INDEX)
 					{		
 						CurrentFrame.DataSize =
@@ -249,7 +244,7 @@ bool HENBUSCtrl_Handler()
 							currentByte;
 #endif							
 											
-						// Indeksy pola danych i CRC					
+						// Indexes of data and CRC field					
 						if (CurrentFrame.DataSize)
 						{										
 							currentFieldStartIndex = dataStartIndex =
@@ -266,12 +261,11 @@ bool HENBUSCtrl_Handler()
 						} 
 						else
 						{
-							// W przypadku braku danych w ramce to ju¿ koniec 
-							// transmisji.
+							// End of transmission if no more bytes in frame 
 							currentFieldStartIndex = currentFieldEndIndex = 0;
 						}
 					} else
-					// --->Pole CRC
+					// --->CRC field
 					if (currentFieldStartIndex == crcStartIndex)
 					{
 						crcOfFrame =
@@ -284,7 +278,7 @@ bool HENBUSCtrl_Handler()
 				}
 			}			
 			else
-			// --->Pole komendy
+			// --->Command field
 		    if (currentFieldStartIndex == HENBUS_CMD_START_INDEX)
 			{
 #ifndef COMM_BINARY_MODE				
@@ -294,28 +288,28 @@ bool HENBUSCtrl_Handler()
 					0;
 #endif					
 						
-				// Czy to ostatni znak pola komendy?
+				// Is it last byte of Command field?
 				if (byteIdx == currentFieldEndIndex)
 				{
 #ifdef COMM_BINARY_MODE
 					CurrentFrame.CommandID = currentByte;
 #endif					
 					
-					// Indeksy pola rozmiaru danych
+					// Indexes of data size field
 					currentFieldStartIndex = HENBUS_DATA_SIZE_START_INDEX;
 					currentFieldEndIndex = HENBUS_DATA_SIZE_END_INDEX;
 				}
 				
 			}
 			else
-			// --->Pole danych
+			// --->Data field
 			if (currentFieldStartIndex == dataStartIndex)
 			{
 #ifndef COMM_BINARY_MODE				
 				AsciiHexByte[(byteIdx - currentFieldStartIndex) % 2] =
 					currentByte;
 					
-				// Czy mamy ca³y bajt?
+				// Is id complete byte?
 				if ((byteIdx - currentFieldStartIndex) % 2 == 1)
 				{
 					CurrentFrame.Data[(byteIdx - currentFieldStartIndex) / 2] =
@@ -326,10 +320,10 @@ bool HENBUSCtrl_Handler()
 					currentByte;			
 #endif				
 				
-				// Czy to koniec danych?
+				// Is it end of data?
 				if (byteIdx == currentFieldEndIndex)
 				{
-					// Indeksy pola CRC
+					// Indexes of CRC field
 					currentFieldStartIndex = currentFieldEndIndex + 1;
 					currentFieldEndIndex = currentFieldStartIndex + 
 						HENBUS_CRC_LENGTH  - 1;
@@ -340,21 +334,21 @@ bool HENBUSCtrl_Handler()
 			
 		byteIdx++;
 		
-		// Sprawdzanie czy odebrano ca³¹ ramkê.
+		// Do we have complete frame?
 		if (currentByte == HENBUS_EOF)
 		{
 			byteIdx = 0;
 			
-			// Sprawdzanie sumy kontrolnej
+			// CRC check
 			if ((CRC8(CurrentFrame.Data, CurrentFrame.DataSize) == crcOfFrame ||
 			    !CurrentFrame.DataSize) &&
 			    FrameReceivedCallback)
 			{
-				// Reset timera
+				// Timer reset
 				timeoutTimer = TimeoutTime;
 				isConnected = true;
 				
-				// Czy zosta³a odebrana ramka Watchdog'a
+				// Do we have complete Watchdog frame?
 				if (
 #ifndef COMM_BINARY_MODE				
 					!strcmp((char*)CurrentFrame.CommandName,
@@ -375,22 +369,12 @@ bool HENBUSCtrl_Handler()
 }
 
 /*----------------------------------------------------------------------------*/
-/**
-* @brief    Inicjalizacja kontrolera HENBUS
-* @param    wdFrame : ramka Watchdog'a od PC
-* @param    wdAnswerFrame : ramka odpowiedzi na ramkê z PC
-* @param    serialPortName : nazwa portu szeregowego
-* @param    frameCallback : wskaŸnik do funkcji odbierania ramek
-* @param    taskInterval : czas co jaki jest wywo³ywana funkcja obs³ugi
-* @retval   Struktura kontrolera
-*/
 CommController_t HENBUSCtrl_Init(const CommProtocolFrame_t* wdTestFrame,
                                  const CommProtocolFrame_t* wdAnswerFrame,
 					             ESPName_t serialPortName,
 				                 void (*frameCallback)(CommProtocolFrame_t*),
 								 uint16_t taskInterval) 
 {
-	// Inicjalizacja
 	WatchdogTestFrame = *wdTestFrame;
 	WatchdogAnswerFrame = *wdAnswerFrame;
 	SerialPortName = serialPortName;
@@ -402,4 +386,4 @@ CommController_t HENBUSCtrl_Init(const CommProtocolFrame_t* wdTestFrame,
 	return Controller;
 }
 
-/******************* (C) COPYRIGHT 2013 HENIUS *************** KONIEC PLIKU ***/
+/******************* (C) COPYRIGHT 2013 HENIUS *************** END OF FILE ****/

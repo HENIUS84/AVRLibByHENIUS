@@ -4,34 +4,26 @@
  * @author   HENIUS (Pawe³ Witak)                                      
  * @version  1.1.1                                                         
  * @date     29-01-2013                                                       
- * @brief    Biblioteka z u¿ytecznymi funkcjami
+ * @brief    Library with useful functions
  *******************************************************************************
  *
  * <h2><center>COPYRIGHT 2013 HENIUS</center></h2>
  */
 
-/* Sekcja include ------------------------------------------------------------*/
+/* Include section -----------------------------------------------------------*/
 
-// --->Pliki systemowe
+// --->System files
 
 #include <stdio.h>
 #include <ctype.h>
 
-// --->Pliki u¿ytkownika
+// --->User files
 
 #include "Utils.h"
 
-/* Sekcja zmiennych ----------------------------------------------------------*/
-
-/* Sekcja funkcji ------------------------------------------------------------*/
+/* Function section ----------------------------------------------------------*/
 
 /*----------------------------------------------------------------------------*/
-/**
-* @brief    Obliczanie 8 bitowej sumy kontrolnej
-* @param    *dataIn : dane wejœciowe
-* @param    size : liczba bajtów danych wejœciowych
-* @retval   Brak
-*/
 uint8_t CRC8(uint8_t *dataIn, uint16_t size)
 {
 	#define CRC8INIT  0x00
@@ -72,27 +64,17 @@ uint8_t CRC8(uint8_t *dataIn, uint16_t size)
 }
 
 /*----------------------------------------------------------------------------*/
-/**
-* @brief    Konwersja wartoœci HEX (pó³bajta) do postaci bajtu
-* @param    hex : wartoœæ HEX
-* @retval   Bajt
-*/
 uint8_t HexToByte(uint8_t hex)
 {
-	uint8_t result = 0;				// Wynik operacji
+	uint8_t result = 0;
 	
-	// Czy to cyfra?
 	if (hex >= '0' && hex <= '9')
 	{
 		result = hex - '0';
-	} else
-	// Czy to ma³a litera?
-	if (hex >= 'a' && hex <= 'f')
+	} else if (hex >= 'a' && hex <= 'f')
 	{
 		result = hex - 'a' + 0x0A;
-	} else
-	// Czy to du¿a litera?
-	if (hex >= 'A' && hex <= 'F')
+	} else if (hex >= 'A' && hex <= 'F')
 	{
 		result = hex - 'A' + 0x0A;
 	}
@@ -101,14 +83,9 @@ uint8_t HexToByte(uint8_t hex)
 }
 
 /*----------------------------------------------------------------------------*/
-/**
-* @brief    Konwersja wartoœci ASCII HEX do postaci bajtu
-* @param    asciHex : wartoœæ ASCII HEX
-* @retval   Bajt
-*/
 uint8_t AsciiHexToByte(uint8_t* asciHex)
 {
-	uint8_t result = 0;				// Wynik operacji
+	uint8_t result = 0;
 	
 	result = HexToByte(asciHex[0]);
 	result <<= 4;
@@ -118,36 +95,21 @@ uint8_t AsciiHexToByte(uint8_t* asciHex)
 }
 
 /*----------------------------------------------------------------------------*/
-/**
-* @brief    Konwersja bajtu do postaci ASCII HEX
-* @param    result : tablica z bajtami po konwersji
-* @param    byte : konwertowany bajt
-* @retval   Brak
-*/
 void ByteToAsciiHex(uint8_t* result, uint8_t byte)
 {
 	if (result)
 	{		
-		// Konwersja na ASCII HEX
 		sprintf((char*)result, "%02X", byte);
 	}
 }
 
 /*----------------------------------------------------------------------------*/
-/**
-* @brief    Konwersja tablicy bajtów do postaci ASCII HEX
-* @param    result : tablica z bajtami po konwersji
-* @param    byte : konwertowany bajt
-* @param    length : d³ugoœæ Ÿród³owej tablicy
-* @retval   Brak
-*/
 void BytesToAsciiHex(uint8_t* result, uint8_t* bytes, uint8_t length)
 {
-	uint8_t index;					// Indeks pomocniczy
+	uint8_t index;
 	
 	if (result && bytes)
 	{
-		// Konwersja na ASCII HEX
 		for (index = 0; index < length; index++)
 		{
 			ByteToAsciiHex(result, bytes[index]);
@@ -156,4 +118,4 @@ void BytesToAsciiHex(uint8_t* result, uint8_t* bytes, uint8_t length)
 	}
 }
 
-/******************* (C) COPYRIGHT 2013 HENIUS *************** KONIEC PLIKU ***/
+/******************* (C) COPYRIGHT 2013 HENIUS *************** END OF FILE ****/

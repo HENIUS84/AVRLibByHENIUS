@@ -4,7 +4,7 @@
  * @author   HENIUS (Paweł Witak)
  * @version  1.01.2
  * @date     16-04-2014
- * @brief    Obsługa klawiatury (plik nagłówkowy)
+ * @brief    Keyboard handler (plik nagłówkowy)
  *******************************************************************************
  *
  * <h2><center>COPYRIGHT 2014 HENIUS</center></h2>
@@ -13,80 +13,128 @@
 #ifndef KEYBOARDLIB_H_
 #define KEYBOARDLIB_H_
 
-/* Sekcja include ------------------------------------------------------------*/
+/* Include section -----------------------------------------------------------*/
 
-// Pliki systemowe
+// --->System files
+
 #include <stdint.h>
 #include <stdbool.h>
 
-/* Sekcja stałych, makr i definicji ------------------------------------------*/
+/* Macros, constants and definitions section ---------------------------------*/
 
-// --->Stałe
+// --->Constants
 
-/*! Czas repetycji dla długiego wciśnięcia przycisku */
+/*! Repetition time for long press (in ms) */
 #define LONG_PRESS_TIME		(500) 	
-/*! Czas repetycji dla stanu trzymanego przycisku */
+/*! Repetition time for button holding (in ms) */
 #define HOLD_TIME			(500)
 
-// --->Typy
+// --->Types
 
 /**
- * @brief Stan przycisku
+ * @brief Button state
  */
 typedef enum
 {
-	KS_NOT_PRESSED,					/*!< Nie wciśnięty */
-	KS_SHORT_PRESS,					/*!< Krótkie wciśnięcie */
-	KS_LONG_PRESS,					/*!< Długie wciśnięcie */
-	KS_HELD							/*!< Przycisk trzymany */
+	KS_NOT_PRESSED,							/*!< Not pressed */
+	KS_SHORT_PRESS,							/*!< Short press */
+	KS_LONG_PRESS,							/*!< Long press */
+	KS_HELD									/*!< Button held */
 }EKeyState_t;
 
 /**
- * @brief Struktura opisująca przycisk
+ * @brief Button description structure
  */
 typedef struct
 {
-	uint16_t Mask;					/*!< Maska przycisku */
-	uint8_t Code;					/*!< Kod przycisku */	
-	EKeyState_t State;				/*!< Atualny stan przycisku */
-	bool IsToggled;					/*!< Zmiana stanu wcisnięcia przycisku */
-	uint16_t RepetitionTimer;		/*!< Timer repetycji */
+	uint16_t Mask;							/*!< Button mask */
+	uint8_t Code;							/*!< Button code */	
+	EKeyState_t State;						/*!< Current button state */
+	bool IsToggled;							/*!< Button toggle state */
+	uint16_t RepetitionTimer;				/*!< Repetition timer */
 }Key_t;
 
 /**
- * @brief Struktura opisująca klawiaturę
+ * @brief Keyboard description structure
  */
 typedef struct
 {	
-	uint8_t AmountOfButtons;		/*!< Liczba przycisków */
-	/*! Wskaźnik do funkcji pobierającej stan przycisków */
+	uint8_t AmountOfButtons;				/*!< Count of buttons */
+	/*! Pointer to the function handling button state */
 	uint16_t(*Handler)(void);
-	/*! Czas zadania obsługi klawiatury (w ms) */
+	/*! Task interval for keyboard support (in ms) */
 	uint16_t HandlerTime;
-	Key_t ButtonMap[];				/*!< Mapa przycisków */	
+	Key_t ButtonMap[];						/*!< Buttons map */	
 }Keyboard_t;
 
-/* Sekcja deklaracji ---------------------------------------------------------*/
+/* Declaration section -------------------------------------------------------*/
 
-// --->Funkcje
+// --->Functions
 
-// Funkcja inicjalizacji klawiatury
+/*----------------------------------------------------------------------------*/
+/**
+ * @brief    Keyboard initialization
+ * @param    *keyboard : pointer to the keyboard descriptor
+ * @retval   None
+ */
 void InitKeyboard(Keyboard_t *keyboard);
-// Funkcja obsługi klawiatury
+
+/*----------------------------------------------------------------------------*/
+/**
+ * @brief    Keyboard handler
+ * @param    None
+ * @retval   None
+ */
 void KeyboardHandler(void);
-// Sprawdzanie wciśnięcia przycisku
+
+/*----------------------------------------------------------------------------*/
+/**
+ * @brief    Checks if key is pressed.
+ * @param    keyCode : code of key
+ * @retval   Key press state (true - pressed)
+ */
 bool IsKeyPressed(uint8_t keyCode);
-// Sprawdzanie krótkiego wciśnięcia przycisku
+
+/*----------------------------------------------------------------------------*/
+/**
+ * @brief    Checks if key is short pressed.
+ * @param    keyCode : code of key
+ * @retval   Key press state (true - pressed)
+ */
 bool IsKeyShortPressed(uint8_t keyCode);
-// Sprawdzanie długiego wciśnięcia przycisku
+
+/*----------------------------------------------------------------------------*/
+/**
+ * @brief    Checks if key is long pressed.
+ * @param    keyCode : code of key
+ * @retval   Key press state (true - pressed)
+ */
 bool IsKeyLongPressed(uint8_t keyCode);
-// Sprawdzanie zmiany stanu wciśnięcia przycisku
+
+/*----------------------------------------------------------------------------*/
+/**
+ * @brief    Checks if key state is toggled
+ * @param    keyCode : code of key
+ * @retval   Key state toggling (true - change)
+ */
 bool IsKeyToggled(uint8_t keyCode);
-// Pobieranie wciśniętego przycisku
+
+/*----------------------------------------------------------------------------*/
+/**
+ * @brief    Get pressed key
+ * @param    None
+ * @retval   Code of pressed key (0 - not presed)
+ */
 uint8_t GetKey(void);
-// Blokowanie klawiatury
+
+/*----------------------------------------------------------------------------*/
+/**
+ * @brief    Locks the keyboard
+ * @param    isLocked : lock flag
+ * @retval   None
+ */
 void SetKeyboardLock(bool isLocked);
 
 #endif								/* KEYBOARDLIB_H_ */
 
-/******************* (C) COPYRIGHT 2014 HENIUS ************** KONIEC PLIKU ****/
+/******************* (C) COPYRIGHT 2014 HENIUS *************** END OF FILE ****/

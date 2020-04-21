@@ -10,19 +10,19 @@
  * <h2><center>COPYRIGHT 2013 HENIUS</center></h2>
  */
 
-/* Sekcja include ------------------------------------------------------------*/
+/* Include section -----------------------------------------------------------*/
 
-// --->Pliki systemowe
+// --->System files
 
 #include <string.h>
 #include <ctype.h>
 #include <avr/pgmspace.h>
 
-// --->Pliki użytkownika
+// --->User files
 
 #include "SoundLib.h"
 
-/* Sekcja zmiennych ----------------------------------------------------------*/
+/* Variable section ----------------------------------------------------------*/
 
 /*! Wskaźnik do struktury inicjalizującej */
 SoundController_t SoundController;			
@@ -44,13 +44,13 @@ uint16_t NoteFrequencies[] =
     392								// g
 };
 
-/* Sekcja funkcji ------------------------------------------------------------*/
+/* Function section ----------------------------------------------------------*/
 
 /*----------------------------------------------------------------------------*/
 /**
  * @brief    Inicjalizacja biblioteki
  * @param    *soundController : wskaźnik do struktury inicjalizującej audio
- * @retval   Brak
+ * @retval   None
  */
 void InitSoundLib(SoundController_t *soundController)
 {	
@@ -61,7 +61,7 @@ void InitSoundLib(SoundController_t *soundController)
 /**
  * @brief    Ustawianie zadanej częstotliowści audio (rozpoczęcie odgrywania)
  * @param    freq : częstotliwość (w Hz)
- * @retval   Brak
+ * @retval   None
  */
 void SetSoundFreq(uint16_t freq)
 {
@@ -74,8 +74,8 @@ void SetSoundFreq(uint16_t freq)
 /*----------------------------------------------------------------------------*/
 /**
  * @brief    Zatrzymanie odgrywania dźwięku
- * @param    Brak
- * @retval   Brak
+ * @param    None
+ * @retval   None
  */
 void StopSoundPlay(void)
 {
@@ -320,8 +320,8 @@ Note_t GetNote(uint8_t* ring, uint16_t *idx, RTTTLHeader_t *header)
 /*----------------------------------------------------------------------------*/
 /**
  * @brief    Funkcja obsługi biblioteki dźwiękowej
- * @param    Brak
- * @retval   Brak
+ * @param    None
+ * @retval   None
  */
 void SoundLibHandler(void)
 {
@@ -389,7 +389,7 @@ void SoundLibHandler(void)
  * @brief    Generowanie dźwięku o zadanej częstotliwości i czasie trwania
  * @param    freq : częstotliwość (w Hz)
  * @param    duration : czas trwania (w ms), dla < 0 - granie nieskończone
- * @retval   Brak
+ * @retval   None
  */
 void Beep(uint16_t freq, int16_t duration)
 {
@@ -402,7 +402,7 @@ void Beep(uint16_t freq, int16_t duration)
 /**
  * @brief    Odgrywanie dzwonka w formacie RTTTL
  * @param    *ring : wskaźnik do treści dzwonka
- * @retval   Brak
+ * @retval   None
  */
 void PlayRing(uint8_t *ring)
 {
@@ -415,4 +415,4 @@ void PlayRing(uint8_t *ring)
 	SoundRequest = SR_RING;			// Rodzaj żądania		
 }
 
-/******************* (C) COPYRIGHT 2013 HENIUS *************** KONIEC PLIKU ***/
+/******************* (C) COPYRIGHT 2013 HENIUS *************** END OF FILE ****/

@@ -4,35 +4,29 @@
  * @author   HENIUS (Paweł Witak)
  * @version  1.1.1
  * @date     23-06-2011
- * @brief    Implementacja filtrów uśredniających
+ * @brief    Average filter implementation
  *******************************************************************************
  *
  * <h2><center>COPYRIGHT 2011 HENIUS</center></h2>
  */
 
-/* Sekcja include ------------------------------------------------------------*/
+/* Include section -----------------------------------------------------------*/
 
-// --->Pliki systemowe
+// --->System files
 
 #include <stdio.h>
 #include <stdbool.h>
 #include <math.h>
 
-// --->Pliki użytkownika
+// --->User files
 
 #include "AverageFilters.h"
 
-/* Sekcja zmiennych ----------------------------------------------------------*/
+/* Variable section ----------------------------------------------------------*/
 
-/* Sekcja funkcji ------------------------------------------------------------*/
+/* Function section ----------------------------------------------------------*/
 
 /*----------------------------------------------------------------------------*/
-/**
- * @brief    Obsługa filtru uśredniającego 1
- * @param    currentSample : aktualna próbka
- * @param    *filter : wskaźnik do struktury konfiguracyjnej filtru
- * @retval   Średnia ze wszystkich próbek
- */
 int32_t AverageFilter1(int32_t currentSample, AvgFilter1_t *filter)
 {
 	int32_t result;
@@ -47,23 +41,17 @@ int32_t AverageFilter1(int32_t currentSample, AvgFilter1_t *filter)
 }
 
 /*----------------------------------------------------------------------------*/
-/**
- * @brief    Obsługa filtru uśredniającego 2
- * @param    currentSample : aktualna próbka
- * @param    *filter : wskaźnik do struktury konfiguracyjnej filtru
- * @retval   Średnia ze wszystkich próbek
- */
 uint16_t AverageFilter2(uint16_t currentSample, AvgFilter2_t *filter)
 {
-    // Liczenie  średniej
+    // Average calculation
 	filter->PreviousSum = filter->PreviousSum + (int32_t)currentSample - 
 	                      filter->Buffer[filter->Index];
 						  
-	// Wprowadzenie próbki do bufora
+	// Inserting sample into buffer
 	filter->Buffer[filter->Index++] = currentSample;		
 	filter->Index %= AVG_FILTER2_SIZE;
   
 	return filter->PreviousSum  >> AVG_FILTER_SCALE;					   
 }
 
-/******************* (C) COPYRIGHT 2011 HENIUS *************** KONIEC PLIKU ***/
+/******************* (C) COPYRIGHT 2011 HENIUS *************** END OF FILE ****/

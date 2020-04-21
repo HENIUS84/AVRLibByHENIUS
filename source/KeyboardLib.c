@@ -4,39 +4,39 @@
  * @author   HENIUS (Paweł Witak)
  * @version  1.1.2
  * @date     16-04-2014
- * @brief    Obsługa klawiatury
+ * @brief    Keyboard handler
  *******************************************************************************
  *
  * <h2><center>COPYRIGHT 2014 HENIUS</center></h2>
  */
 
-/* Sekcja include ------------------------------------------------------------*/
+/* Include section -----------------------------------------------------------*/
 
-// --->Pliki systemowe
+// --->System files
 
 #include <stdio.h>
 #include <math.h>
 
-// --->Pliki użytkownika
+// --->User files
 
 #include "KeyboardLib.h"
 
-/* Sekcja zmiennych ----------------------------------------------------------*/
+/* Variable section ----------------------------------------------------------*/
 
-Keyboard_t Keyboard;				/*!< Wskaźnik do opisu klawiatury */
-uint8_t PressedKey;					/*!< Kod wciśniętego przycisku */
-bool IsKbdLocked = false;			/*!< Flaga oznaczająca blokadę klawiatury */
-uint8_t AmountOfButtons;			/*!< Liczba przycisków */
+/*! Pointer tot he keyboard descriptor */
+static Keyboard_t Keyboard;					
+static uint8_t PressedKey;					/*!< Pressed button code */
+static bool IsKbdLocked = false;			/*!< Keyboard lock flag */
 
-/* Sekcja funkcji ------------------------------------------------------------*/
+/* Function section ----------------------------------------------------------*/
 
 /*----------------------------------------------------------------------------*/
 /**
- * @brief    Pobieranie czasu repetycji
- * @param    requiredTime : wymagany czas repetycji (w ms)
- * @retval   Ustawiany czas repetycji
+ * @brief    Gets repetition time.
+ * @param    requiredTime : required repetition time (in ms)
+ * @retval   Set repetition time
  */
-uint16_t GetRepetitionTime(uint16_t requiredTime)
+static uint16_t GetRepetitionTime(uint16_t requiredTime)
 {
 	double time = round(requiredTime / Keyboard.HandlerTime);
 	
@@ -44,14 +44,9 @@ uint16_t GetRepetitionTime(uint16_t requiredTime)
 }
 
 /*----------------------------------------------------------------------------*/
-/**
- * @brief    Funkcja inicjalizacji klawiatury
- * @param    *keyboard : wskażnik do opisu klawiatury
- * @retval   Brak
- */
 void InitKeyboard(Keyboard_t *keyboard)
 {
-	uint8_t idx;					// Indeks pomocniczy
+	uint8_t idx;
 	
 	Keyboard = *keyboard;
 	
@@ -64,11 +59,6 @@ void InitKeyboard(Keyboard_t *keyboard)
 }
 
 /*----------------------------------------------------------------------------*/
-/**
- * @brief    Blokowanie klawiatury
- * @param    isLocked : flaga oznaczająca blokadę klawiatury
- * @retval   Brak
- */
 void SetKeyboardLock(bool isLocked)
 {
 	IsKbdLocked = isLocked;	
@@ -76,19 +66,19 @@ void SetKeyboardLock(bool isLocked)
 
 /*----------------------------------------------------------------------------*/
 /**
- * @brief    Funkcja obsługi klawiatury
- * @param    Brak
- * @retval   Brak
+ * @brief    Keyboard handler
+ * @param    None
+ * @retval   None
  */
 void KeyboardHandler(void)
 {	
-	uint16_t idx;					// Indeks pomocniczy	
-	uint16_t keyMask = 0;			// Maska przycisków
-	EKeyState_t currState;			// Aktualny stan przycisku	
+	uint16_t idx;	
+	uint16_t keyMask = 0;
+	EKeyState_t currState;	
 	
-	if (!IsKbdLocked)				// Klawiatura odblokowana
+	if (!IsKbdLocked)
 	{		
-		// Pobieranie stanów przycisków
+		// Key state handling
 		if (Keyboard.Handler)
 		{
 			keyMask = Keyboard.Handler();			
@@ -100,7 +90,7 @@ void KeyboardHandler(void)
 			{
 				currState = Keyboard.ButtonMap[idx].State;
 				
-				// Czy to długie wciśnięcie?
+				// Long press
 				if (!(--Keyboard.ButtonMap[idx].RepetitionTimer))
 				{
 					currState = KS_LONG_PRESS; 
@@ -112,7 +102,6 @@ void KeyboardHandler(void)
 					currState = KS_SHORT_PRESS;
 				}
 			 
-				// Pobieranie kodu wciśniętego przycisku
 				PressedKey = Keyboard.ButtonMap[idx].Code;
 			}
 			else
@@ -122,7 +111,7 @@ void KeyboardHandler(void)
 					GetRepetitionTime(LONG_PRESS_TIME);
 			}
 		
-			// Czy nastąpiła zmiana stanu wciśnięcia przycisku?
+			// Button toggling
 			if (currState != Keyboard.ButtonMap[idx].State && 
 			    currState != KS_LONG_PRESS)
 			{
@@ -136,9 +125,9 @@ void KeyboardHandler(void)
 
 /*----------------------------------------------------------------------------*/
 /**
- * @brief    Pobieranie wciśniętego przycisku
- * @param    Brak
- * @retval   Kod wciśnięcia przycisku (0 - brak wciśnięcia)
+ * @brief    Get pressed key
+ * @param    None
+ * @retval   Code of pressed key (0 - not pressed)
  */
 uint8_t GetKey(void)
 {	
@@ -151,16 +140,14 @@ uint8_t GetKey(void)
 
 /*----------------------------------------------------------------------------*/
 /**
- * @brief    Sprawdzanie wciśnięcia przycisku z zadanym czasem
- * @param    keyCode : kod przycisku
- * @param    state : poszukiwany stan przycisku
- * @retval   Stan wciśnięcia przycisku (true - wciśnięty)
+ * @brief    Checks if key is pressed in required time.
+ * @param    keyCode : code of key
+ * @param    state : required key state
+ * @retval   State of key press (true - pressed)
  */
-bool GetKeyState(uint8_t keyCode, EKeyState_t state)
+static bool GetKeyState(uint8_t keyCode, EKeyState_t state)
 {
-	// Flaga oznaczająca wciśnięcie przycisku (według zadanego stanu)
 	bool isPressed = false;
-	// Indeks pomocniczy
 	uint16_t idx;
 	
 	for (idx = 0; idx < Keyboard.AmountOfButtons; idx++)
@@ -170,8 +157,6 @@ bool GetKeyState(uint8_t keyCode, EKeyState_t state)
 		{
 			isPressed = true;
 			
-			// Jeśli badane jest długie przytrzymanie to po pobraniu stanu jest 
-			// on kasowany?
 			if (state == KS_LONG_PRESS) {
 				Keyboard.ButtonMap[idx].State = KS_HELD;
 			}
@@ -184,11 +169,6 @@ bool GetKeyState(uint8_t keyCode, EKeyState_t state)
 }
 
 /*----------------------------------------------------------------------------*/
-/**
- * @brief    Sprawdzanie wciśnięcia przycisku
- * @param    keyCode : kod przycisku
- * @retval   Stan wciśnięcia przycisku (true - wciśnięty)
- */
 bool IsKeyPressed(uint8_t keyCode)
 {
 	return GetKeyState(keyCode, KS_SHORT_PRESS) | 
@@ -197,37 +177,22 @@ bool IsKeyPressed(uint8_t keyCode)
 }
 
 /*----------------------------------------------------------------------------*/
-/**
- * @brief    Sprawdzanie krótkiego wciśnięcia przycisku
- * @param    keyCode : kod przycisku
- * @retval   Stan wciśnięcia przycisku (true - wciśnięty)
- */
 bool IsKeyShortPressed(uint8_t keyCode)
 {
 	return GetKeyState(keyCode, KS_SHORT_PRESS);
 }
 
 /*----------------------------------------------------------------------------*/
-/**
- * @brief    Sprawdzanie długiego wciśnięcia przycisku
- * @param    keyCode : kod przycisku
- * @retval   Stan wciśnięcia przycisku (true - wciśnięty)
- */
 bool IsKeyLongPressed(uint8_t keyCode)
 {
 	return GetKeyState(keyCode, KS_LONG_PRESS);
 }
 
 /*----------------------------------------------------------------------------*/
-/**
- * @brief    Sprawdzanie zmiany stanu wciśnięcia przycisku
- * @param    keyCode : kod przycisku
- * @retval   Zmiana stanu wciśnięcia przycisku (true - zmiana)
- */
 bool IsKeyToggled(uint8_t keyCode)
 {
-	uint8_t idx;					// Indeks pomocniczy
-	bool isToggled = false;			// Flaga oznaczająca zmianę stanu
+	uint8_t idx;
+	bool isToggled = false;
 	
 	for (idx = 0; idx < Keyboard.AmountOfButtons; idx++)
 	{
@@ -243,4 +208,4 @@ bool IsKeyToggled(uint8_t keyCode)
 	return isToggled;	
 }
 
-/******************* (C) COPYRIGHT 2014 HENIUS ************** KONIEC PLIKU ****/
+/******************* (C) COPYRIGHT 2014 HENIUS *************** END OF FILE ****/

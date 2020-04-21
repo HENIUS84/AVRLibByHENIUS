@@ -1,19 +1,19 @@
 /**
  *******************************************************************************
- * @file     OWImaster.c
+ * @file     OWIMaster.c
  * @author   HENIUS (Paweł Witak)
  * @version  1.1.1
  * @date     11/06/2011
- * @brief    Obsługa magistrali 1-Wire w trybie MASTER (na podstawie noty 
-             Atmel'a AVR318)
+ * @brief    1-Wire driver in I2C Master driver mode
+ *           (based on Atmel'a AVR318 note)
  *******************************************************************************
  *
  * <h2><center>COPYRIGHT 2011 HENIUS</center></h2>
  */
 
-/* Sekcja include ------------------------------------------------------------*/
+/* Include section -----------------------------------------------------------*/
 
-// --->Pliki systemowe
+// --->System files
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -22,126 +22,104 @@
 #include <avr/interrupt.h>
 #include <string.h>
 
-// --->Pliki użytkownika
+// --->User files
 
 #include "OWIMaster.h"
 #include "OWICrc.h"
 
-/* Sekcja zmiennych ----------------------------------------------------------*/
+/* Variable section ----------------------------------------------------------*/
 
-uint8_t IntState;					/*!< Stan przerwań */
+uint8_t IntState;							/*!< Interrupt state */
 
-/* Sekcja funkcji ------------------------------------------------------------*/
+/* Function section ----------------------------------------------------------*/
 
 /*----------------------------------------------------------------------------*/
-/**
- * @brief    Inicjalizacja magistrali 1-Wire (impuls RESET i PRESENCE)
- * @param    Brak
- * @retval   Stan dostępności urządzenia SLAVE (0 - brak urządzenia)
- */
 bool OWIMaster_Init(void)
 {
-	uint8_t result;					// Rezultat funkcji
+	uint8_t result;
 	
-	SAVE_INTERRUPT();				// Wyłączanie przerwań
+	SAVE_INTERRUPT();
 	
-	// Impuls RESET
-	OWI_PULL_BUS_LOW();				// Magistrala na LOW
+	// RESET signal
+	OWI_PULL_BUS_LOW();
 	_delay_us(OWI_DELAY_H);		
 		
-	// Impuls PRESENCE
-	OWI_RELEASE_BUS();				// Zwalnianie magistrali
+	// PRESENCE signal
+	OWI_RELEASE_BUS();
 	_delay_us(OWI_DELAY_I);
 	result = ~OWI_PIN & OWI;
 	_delay_us(OWI_DELAY_J);
 	
-	RESTORE_INTERRUPT();			// Przywracanie przerwań
+	RESTORE_INTERRUPT();
 	
 	return result ? true : false;
 }
 
 /*----------------------------------------------------------------------------*/
 /**
- * @brief    Zapis '1' na magistrali
- * @param    Brak
- * @retval   Brak
+ * @brief    Writes '1' on the bus.
+ * @param    None
+ * @retval   None
  */
-void OWIMaster_WriteBit1(void)
+static void OWIMaster_WriteBit1(void)
 {
-	SAVE_INTERRUPT();				// Wyłączanie przerwań
+	SAVE_INTERRUPT();
 	
-	// Ściąganie magistrali do '0' i opóźnienie
 	OWI_PULL_BUS_LOW();
 	_delay_us(OWI_DELAY_A);
-	
-	// Zwalnianie magistrali i opóźneinie
 	OWI_RELEASE_BUS();
 	_delay_us(OWI_DELAY_B);
 	
-	RESTORE_INTERRUPT();			// Przywracanie przerwań
+	RESTORE_INTERRUPT();
 }
 
 /*----------------------------------------------------------------------------*/
 /**
- * @brief    Zapis '0' na magistrali
- * @param    Brak
- * @retval   Brak
+ * @brief    Writes 'o' on the bus.
+ * @param    None
+ * @retval   None
  */
-void OWIMaster_WriteBit0(void)
+static void OWIMaster_WriteBit0(void)
 {
-	SAVE_INTERRUPT();				// Wyłączanie przerwań
+	SAVE_INTERRUPT();
 	
-	// Ściąganie magistrali do '0' i opóźnienie
 	OWI_PULL_BUS_LOW();
 	_delay_us(OWI_DELAY_C);
-	
-	// Zwalnianie magistrali i opóźneinie
 	OWI_RELEASE_BUS();
 	_delay_us(OWI_DELAY_D);
 	
-	RESTORE_INTERRUPT();			// Przywracanie przerwań
+	RESTORE_INTERRUPT();
 }
 
 /*----------------------------------------------------------------------------*/
 /**
- * @brief    Odczyt bitu na magistrali
- * @param    Brak
- * @retval : Odczytany bit w postaci maski wyprowadzenia OWI
+ * @brief    Reads bit on the bus
+ * @param    None
+ * @retval   Read bit (in OWI bit mask format)
  */
-uint8_t OWIMaster_ReadBit(void)
+static uint8_t OWIMaster_ReadBit(void)
 {
 	uint8_t result;
 	
-	SAVE_INTERRUPT();				// Wyłączanie przerwań
+	SAVE_INTERRUPT();
 	
-	// Ściąganie magistrali do '0' i opóźnienie
 	OWI_PULL_BUS_LOW();
 	_delay_us(OWI_DELAY_A);
-	
-	// Zwalnianie magistrali i opóźneinie
 	OWI_RELEASE_BUS();
 	_delay_us(OWI_DELAY_E);
-	
-	// Próbkowanie magistrali i opóźnienie
 	result = OWI_PIN & OWI;
 	_delay_us(OWI_DELAY_F);
 	
-	RESTORE_INTERRUPT();			// Przywracanie przerwań
+	RESTORE_INTERRUPT();
 	
 	return result;
 }
 
 /*----------------------------------------------------------------------------*/
-/**
- * @brief    Wysłanie bajtu po 1-Wire
- * @param    byte : bajt do wysłania
- * @retval   Brak
- */
 void OWIMaster_SendByte(uint8_t byte)
 {
 	uint8_t idx;
 	
-	// Wysyłanie po kolei wszystkich bitów
 	for (idx = 0 ; idx < 8; idx++)
 	{
 		if (byte & 0x01)
@@ -158,25 +136,19 @@ void OWIMaster_SendByte(uint8_t byte)
 }
 
 /*----------------------------------------------------------------------------*/
-/**
- * @brief    Odbieranie bajtu po 1-Wire
- * @param    byte : bajt do wysłania
- * @retval : Odczytany bajt
- */
 uint8_t OWIMaster_ReadByte(void)
 {
 	uint8_t result = 0;
 	uint8_t idx;
 	
-	// Odczyt kolejnych bitów
+	// Bit loop
 	for (idx = 0; idx < 8; idx++)
 	{
 		result >>= 1;
 		
-		// Odczyt bitu na magstrali
 		if (OWIMaster_ReadBit())
 		{
-			result |= 0x80;			// Ustawianie bitu MSB
+			result |= 0x80;
 		}
 	}
 	
@@ -184,12 +156,6 @@ uint8_t OWIMaster_ReadByte(void)
 }
 
 /*----------------------------------------------------------------------------*/
-/**
- * @brief    Odczyt zadanej liczby bajtów po 1-Wire
- * @param    *data : miejsce na odczytane dane
- * @param    length : liczba bajtów do odczytania
- * @retval   Brak
- */
 void OWIMaster_ReadBytes(uint8_t *data, uint8_t length)
 {
 	uint8_t idx;
@@ -201,12 +167,6 @@ void OWIMaster_ReadBytes(uint8_t *data, uint8_t length)
 }
 
 /*----------------------------------------------------------------------------*/
-/**
- * @brief    Zapis zadanej liczby bajtów po 1-Wire
- * @param    *data : dane do zapisu
- * @param    length : liczba bajtów do zapisania
- * @retval   Brak
- */
 void OWIMaster_SendBytes(uint8_t *data, uint8_t length)
 {
 	uint8_t idx;
@@ -218,64 +178,38 @@ void OWIMaster_SendBytes(uint8_t *data, uint8_t length)
 }
 
 /*----------------------------------------------------------------------------*/
-/**
- * @brief    Wysłanie komendy SKIP ROM po 1-Wire
- * @param    Brak
- * @retval   Brak
- */
 void OWIMaster_SkipRom(void)
 {
 	OWIMaster_SendByte(OWIC_SKIP_ROM);
 }
 
 /*----------------------------------------------------------------------------*/
-/**
- * @brief    Odczyt kodu ROM (w przypadku kiedy jest jedno urządzenie SLAVE)
- * @param    *romCode : wskaźnik do kodu 
- * @retval   Poprawność sumy kontrolnej kodu (true - kod poprawny)
- */
 bool OWIMaster_ReadRomCode(OWIROMCode_t *romCode)
 {
-	// Inicjalizacja magistrali
 	OWIMaster_Init();
-	
-	// Wysłanie komendy READ ROM
-	OWIMaster_SendByte(OWIC_READ_ROM);	
-	
-	// Odczyt ID urządzenia SLAVE
+	OWIMaster_SendByte(OWIC_READ_ROM);
 	OWIMaster_ReadBytes(romCode->ID, sizeof(OWIROMCode_t));
 	
-	// Sprawdzanie poprawności adresu	
 	return OWI_CheckROMCode(romCode->ID);
 }
 
 /*----------------------------------------------------------------------------*/
-/**
- * @brief    Wysłanie kodu ROM (adresowanie urządzenia)
- * @param    *romCode : wskaźnik do kodu 
- * @retval   Brak
- */
 void OWIMaster_SendRomCode(OWIROMCode_t *romCode)
 {
-	// Inicjalizacja magistrali
 	OWIMaster_Init();
-	
-	// Wysłanie komendy MATCH ROM
 	OWIMaster_SendByte(OWIC_MATCH_ROM);
-	
-	// Odczyt ID urządzenia SLAVE
 	OWIMaster_SendBytes(romCode->ID, sizeof(OWIROMCode_t));
 }
 
 /*----------------------------------------------------------------------------*/
 /**
- * @brief    Wysłanie komendy SEARCH ROM
- * @param    *romId : wskaźnik do tablicy przechowującej aktualnie odczytany kod 
- * @param    lastDeviation : ostatnia pozycja bitowa wybrana przez algorytm
- *           (przy perwszym uruchomieniu powinna być równa 0)
- * @retval : Ostatnia pozycja bitowa, na której wystąpiła rozbieżność
+ * @brief    Sends SEARCH ROM command
+ * @param    *romId : wskaźnik do tablicy przechowującej aktualnie odczytany kod buffer for actual code
+ * @param    lastDeviation : last bit position selected by searching algorithm
+ *           (0 at the first iteration)
+ * @retval : Last bit position for difference
  */
-uint8_t OWIMaster_SearchRom(uint8_t *romId, uint8_t lastDeviation)
+static uint8_t OWIMaster_SearchRom(uint8_t *romId, uint8_t lastDeviation)
 {
 	uint8_t currentBit = 1;
     uint8_t newDeviation = 0;
@@ -283,24 +217,23 @@ uint8_t OWIMaster_SearchRom(uint8_t *romId, uint8_t lastDeviation)
     uint8_t bitA;
     uint8_t bitB;
 	
-	// Wysłanie komendy SEARCH ROM
     OWIMaster_SendByte(OWIC_ROM_SEARCH);	
     
-    // Analiza wszsytkich 64 bitów
+    // All 64 bits analysis
     while (currentBit <= 64)
     {
-        // Odczyt bitu z magistrali podwójnie
+        // Double bit read
         bitA = OWIMaster_ReadBit();
         bitB = OWIMaster_ReadBit();
 
         if (bitA && bitB)
         {
-            // Obydwa bity == 1 (błąd)
+            // Error
             return 0;
         }
         else if (bitA ^ bitB)
         {
-            // Wszystkie urządzenia mają te same bity na tej pozycji.
+			// All the devices have the same bits at this position.
             if (bitA)
             {
                 (*romId) |= bitMask;
@@ -310,28 +243,27 @@ uint8_t OWIMaster_SearchRom(uint8_t *romId, uint8_t lastDeviation)
                 (*romId) &= ~bitMask;
             }
         }
-        else						// Obydwa bity równe 0
+        else						// Both bits 0
         {            
             if (currentBit == lastDeviation)
             {
-				// Jeśli to ostatniow wybrana pozycja, 
-				// '1' będzie wybrana tym razem.
-                (*romId) |= bitMask;
+				// If it's last selected position, '1' this time will be chosen.
+				(*romId) |= bitMask;
             }
             else if (currentBit > lastDeviation)
             {
-				// Dla pozostałych ID '0' wybrane kiedy występują rozbieżności.
-                (*romId) &= ~bitMask;
+				// For the remaining ID's '0' selected when deviation is detected.
+				(*romId) &= ~bitMask;
                 newDeviation = currentBit;
             }            
             else if ( !(*romId & bitMask)) 
             {
-				// Szukanie nowej dewiacji
-                newDeviation = currentBit;
+				// Looking for new deviation
+				newDeviation = currentBit;
             }
         }               
         
-        // Wysłanie wybranego bitu na magistralę
+        // Sends selected bit
         if ((*romId) & bitMask)
         {
             OWIMaster_WriteBit1();
@@ -341,9 +273,9 @@ uint8_t OWIMaster_SearchRom(uint8_t *romId, uint8_t lastDeviation)
             OWIMaster_WriteBit0();
         }
           
-        currentBit++;				// Analiza kolejnego bitu
+        currentBit++;						// Next bit preparation
 
-        // Ustalanie wskaźnika bitMask i bitPattern    
+		// Establishing pointer for bitMask and bitPattern
         bitMask <<= 1;
         if (!bitMask)
         {
@@ -356,15 +288,6 @@ uint8_t OWIMaster_SearchRom(uint8_t *romId, uint8_t lastDeviation)
 }
 
 /*----------------------------------------------------------------------------*/
-/**
- * @brief    Sprawdzanie czy kod rodziny znajduje się na liście
- * @param    *devices : wskaźnik do tablicy przechowującej wszystkie wyszukane
- *           Id 
- * @param    familyCode : poszukiwany kod rodziny
- * @param    *codes : lista kodów rodziny urządzeń do wyszukiwania
- *           (element 0xFF oznacza koniec listy)
- * @retval : Rezultat poszukiwania (true - od jest na liście)
- */
 bool OWIMaster_IsFamilyCodeExist(EOWIFamily_t *codes, EOWIFamily_t familyCode)
 {
 	bool result = false;
@@ -385,26 +308,15 @@ bool OWIMaster_IsFamilyCodeExist(EOWIFamily_t *codes, EOWIFamily_t familyCode)
 }
 
 /*----------------------------------------------------------------------------*/
-/**
- * @brief    Wyszukiwanie urządzeń SLAVE na 1-Wire
- * @param    *devices : wskaźnik do tablicy przechowującej wszystkie wyszukane
- *           Id 
- * @param    length : maksymalna liczba urządzeń do wyszukania
- * @param    *familyCodes : lista kodów rodziny urządzeń do wyszukiwania
- *           (0 - wyszukiwanie wszystkich)
- * @retval : Liczba odnalezionych urządzeń (0 - niepowodzenie, jeśli jakieś 
-             urządzenie jest podłączone oznacza błąd transmisji)
- */
 uint8_t OWIMaster_SearchBuses(OWIDevice_t *devices, 
-                              uint8_t length,
-							  EOWIFamily_t *familyCodes)
+                                     uint8_t length,
+							         EOWIFamily_t *familyCodes)
 {
 	uint8_t i, j;
     uint8_t lastDeviation;
     uint8_t numDevices = 0;
 	uint8_t tempId[9];
     
-    // Inicjalizacja wszystkich adresów na 0    
     for (i = 0; i < length; i++)
     {
         for (j = 0; j < 8; j++)
@@ -413,21 +325,17 @@ uint8_t OWIMaster_SearchBuses(OWIDevice_t *devices,
         }
     }
     
-    // Szukanie urządzeń
     lastDeviation = 0;
-    if (OWIMaster_Init())			// Urządzenia dostępne na magistrali
+    if (OWIMaster_Init())
     {
-		// Umieszczanie odnalezionych adresów w tablicy
-        do  
+		do  
         {
             OWIMaster_Init();
-            lastDeviation = OWIMaster_SearchRom(tempId, 
-			                                    lastDeviation);
+            lastDeviation = OWIMaster_SearchRom(tempId, lastDeviation);
 												
 			if (OWIMaster_IsFamilyCodeExist(familyCodes, 
 			                                tempId[0]))
 			{
-				// Sprawdzanie poprawności CRC adresu
 				if (OWI_CheckROMCode(tempId))
 				{					
 					memcpy(devices[numDevices].ROMCode.ID, tempId, 8);
@@ -441,4 +349,4 @@ uint8_t OWIMaster_SearchBuses(OWIDevice_t *devices,
 	return numDevices;	
 }
 
-/******************* (C) COPYRIGHT 2011 HENIUS *************** KONIEC PLIKU ***/
+/******************* (C) COPYRIGHT 2011 HENIUS *************** END OF FILE ****/
