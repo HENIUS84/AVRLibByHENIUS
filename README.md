@@ -1,2 +1,2 @@
-# AVRLibByHENIUS
-Library for useful code for AVR microcontrollers
+# CLibByHENIUS
+Library for useful code for C/C++ language

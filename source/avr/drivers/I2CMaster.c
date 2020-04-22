@@ -2,12 +2,12 @@
  *******************************************************************************
  * @file     I2CMaster.c
  * @author   HENIUS (Paweł Witak)
- * @version  1.1.3
- * @date     03/04/2014
- * @brief    I2C Master driver (based on Atmel'a AVR315 note)
+ * @version  1.1.4
+ * @date     22/04/2020
+ * @brief    I2C Master driver (based on Atmel AVR315 note)
  *******************************************************************************
  *
- * <h2><center>COPYRIGHT 2014 HENIUS</center></h2>
+ * <h2><center>COPYRIGHT 2020 HENIUS</center></h2>
  */
 
 /* Include section -----------------------------------------------------------*/
@@ -41,7 +41,7 @@ static EI2CState_t State;					/*!< Actual state */
 /*----------------------------------------------------------------------------*/
 void I2CMaster_Init(I2CMaster_t *i2cConfig)
 {	
-	int8_t twps = I2C_MAX_OF_TWPS;	
+	uint8_t twps = I2C_MAX_OF_TWPS;	
 	I2CMasterCfg = i2cConfig;
 	State = I2C_NO_STATE;
 	Status.All = 0;
@@ -81,8 +81,6 @@ void I2CMaster_Init(I2CMaster_t *i2cConfig)
 /*----------------------------------------------------------------------------*/
 bool I2CMaster_IsTransceiverBusy(void)
 {
-	bool result;
-
 	return (TWCR & _BV(TWIE)) ? true : false;
 }
 
@@ -116,7 +114,6 @@ void I2CMaster_Deinit(void)
 /*----------------------------------------------------------------------------*/
 bool I2CMaster_SendData(uint8_t* message, uint8_t messageSize)
 {
-	uint8_t index;
 	bool result = I2CMaster_WaitForTransceiver();	
 
 	I2CMsgSize = messageSize + 1;	// Additional byte is SLA+W/R
@@ -129,6 +126,8 @@ bool I2CMaster_SendData(uint8_t* message, uint8_t messageSize)
 
 	if (!(message[0] & I2C_READ_BIT))
 	{
+		uint8_t index;
+
 		for (index = 1; index < messageSize; index++)
 		{
 			I2Cbuff[index] = message[index];
@@ -178,88 +177,46 @@ bool I2CMaster_ReadData(uint8_t* message, uint8_t messageSize)
 static void LogI2Cstatus(EI2CState_t state)
 {	
 #ifdef I2C_DEBUG_ENABLED
-	uint8_t info[] = "I2C Info: %s\r\n";
-	uint8_t error[] = "I2C Error: %s\r\n";
-	
-	switch(state)
-	{
-		// Normal wok (no issues)
-
-		// START bit sent
-		case I2C_START:
-			DebugWrite(info, "I2C_START");
-			
-			break;
-
-		// Double START bit sent
-		case I2C_REP_START:
-			DebugWrite(info, "I2C_REP_START");
-			
-			break;
-
-		// SLA+W sent and ACK received
-		case I2C_MTX_ADR_ACK:
-			DebugWrite(info, "I2C_MTX_ADR_ACK");
-			
-			break;
-
-		// Data byte sent and ACK received
-		case I2C_MTX_DATA_ACK:		
-			DebugWrite(info, "I2C_MTX_DATA_ACK");
-
-		// Data byte received and ACK sent
-		case I2C_MRX_DATA_ACK:
-			DebugWrite(info, "I2C_MRX_DATA_ACK");
-			
-			break;
-
-		// SLA+R sent and ACK received
-		case I2C_MRX_ADR_ACK:
-			DebugWrite(info, "I2C_MRX_ADR_ACK");
-			
-			break;
-
-		// Data byte received and NACK sent
-		case I2C_MRX_DATA_NACK:
-			DebugWrite(info, "I2C_MRX_DATA_NACK");
-			
-			break;
-
-		// Arbitration issue (bus error)
-		case I2C_ARB_LOST:
-			DebugWrite(info, "I2C_ARB_LOST");
-			
-			break;
-
-		// Error handler
-
-		// SLA+W sent and NACK received
-		case I2C_MTX_ADR_NACK:
-			DebugWrite(error, "I2C_MTX_ADR_NACK");
-			
-			break;
-
-		// SLA+R sent and NACK received
-		case I2C_MRX_ADR_NACK:
-			DebugWrite(error, "I2C_MRX_ADR_NACK");
-			
-			break;
-
-		// Data byte sent and NACK received
-		case I2C_MTX_DATA_NACK:
-			DebugWrite(error, "I2C_MTX_DATA_NACK");
-			
-			break;
-
-		// Bus error due to improper STRT and STOP bits
-		case I2C_BUS_ERROR:
-			DebugWrite(error, "I2C_BUS_ERROR");
-			
-			break;
+	/*!< Structure of descriptor for EI2CState_t type */
+    typedef struct  
+    {
+        EI2CState_t State;                  /*!< Current state */
+        bool IsInfo;                        /*!< Flag of info item */
+        const char StateString[];           /*!< String version of EI2CState_t */
+    }EI2CState_Descr_t;
+    EI2CState_Descr_t stateStrings[] =
+    {
+        I2C_START        , true , "I2C_START",
+        I2C_REP_START    , true , "I2C_REP_START",
+        I2C_MTX_ADR_ACK  , true , "I2C_MTX_ADR_ACK",
+        I2C_MTX_DATA_ACK , true , "I2C_MTX_DATA_ACK",
+        I2C_MRX_DATA_ACK , true , "I2C_MRX_DATA_ACK",
+        I2C_MRX_ADR_ACK  , true , "I2C_MRX_ADR_ACK",
+        I2C_MRX_DATA_NACK, true , "I2C_MRX_DATA_NACK",
+        I2C_ARB_LOST     , true , "I2C_ARB_LOST",
+        I2C_MTX_ADR_NACK , false, "I2C_MTX_ADR_NACK",
+        I2C_MRX_ADR_NACK , false, "I2C_MRX_ADR_NACK",
+        I2C_MTX_DATA_NACK, false, "I2C_MTX_DATA_NACK",
+        I2C_BUS_ERROR    , false, "I2C_BUS_ERROR"			
+    };
+    const uint8_t numberOfStates = sizeof(stateStrings) / sizeof(EI2CState_t);
+    EI2CState_Descr_t *currentStateDescr = NULL;
 		
-		// Anyt other state
-		default:		
-			break;
+    // Gets descriptor for specified state
+    for (int i = 0; i < numberOfStates; ++i)
+    {
+        if (state == stateStrings[i].State)
+        {
+            currentStateDescr = &stateStrings[i];
+            break;
+        }
+    }
+
+    if (currentStateDescr)
+    {
+        DebugWrite(
+            currentStateDescr->IsInfo ? "I2C Info: %s\r\n" : "I2C Error: %s\r\n",
+            currentStateDescr->StateString);
 	}
 #endif								/* I2C_DEBUG_ENABLED */		
 }
@@ -416,4 +373,4 @@ ISR(TWI_vect)
 	}
 }
 
-/******************* (C) COPYRIGHT 2014 HENIUS *************** END OF FILE ****/
+/******************* (C) COPYRIGHT 2020 HENIUS *************** END OF FILE ****/
