@@ -83,7 +83,7 @@ uint8_t HexToByte(uint8_t hex)
 }
 
 /*----------------------------------------------------------------------------*/
-uint8_t AsciiHexToByte(uint8_t* asciHex)
+uint8_t AsciiHexToByte(uint8_t *asciHex)
 {
 	uint8_t result = 0;
 	
@@ -95,7 +95,7 @@ uint8_t AsciiHexToByte(uint8_t* asciHex)
 }
 
 /*----------------------------------------------------------------------------*/
-void ByteToAsciiHex(uint8_t* result, uint8_t byte)
+void ByteToAsciiHex(uint8_t *result, uint8_t byte)
 {
 	if (result)
 	{		

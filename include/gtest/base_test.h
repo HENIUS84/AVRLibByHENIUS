@@ -43,7 +43,7 @@
 /*! Macro to create unit test with parameter */
 #define UNIT_TEST_WITH_PARAM(testName, ...) \
 	INSTANTIATE_TEST_CASE_P( \
-			testName##_sequence, \
+			ParameterizedTest, \
 			testName##_class, \
 			::testing::Values(__VA_ARGS__)); \
 	TEST_P(testName##_class, testName)
