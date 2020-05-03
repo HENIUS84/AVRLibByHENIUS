@@ -23,7 +23,7 @@
 
 /* Variable section ----------------------------------------------------------*/
 
-static  CPUfrequency;						/*!< CPU frequency in MHz */
+static int CPUfrequency;					/*!< CPU frequency in MHz */
 
 /* Function section ----------------------------------------------------------*/
 

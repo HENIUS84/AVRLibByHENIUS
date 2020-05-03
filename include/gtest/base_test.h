@@ -17,12 +17,13 @@
 // --->System files
 
 #include <gtest/gtest.h>
+using namespace ::testing;
 
 /* Macros, constants and definitions section ---------------------------------*/
 
 /*! Macro to create test class */
 #define TEST_CLASS(className) \
-	TEST_CLASS_NAME : public ::testing::Test
+	TEST_CLASS_NAME : public Test
 
 /*! Macro to create unit test with fixture class*/
 #define UNIT_TEST_F(className, testName)	\
@@ -38,14 +39,15 @@
 
 /*! Macro to create class for test with params */
 #define TEST_CLASS_WITH_PARAM(testName, paramType) \
-	TEST_CLASS_NAME_WITH_PARAM(testName) : public ::testing::TestWithParam<paramType>
+	TEST_CLASS_NAME_WITH_PARAM(testName) : \
+	public TestWithParam<paramType>
 
 /*! Macro to create unit test with parameter */
 #define UNIT_TEST_WITH_PARAM(testName, ...) \
 	INSTANTIATE_TEST_CASE_P( \
 			ParameterizedTest, \
 			testName##_class, \
-			::testing::Values(__VA_ARGS__)); \
+			Values(__VA_ARGS__)); \
 	TEST_P(testName##_class, testName)
 
 /******************* (C) COPYRIGHT 2020 HENIUS *************** END OF FILE ****/

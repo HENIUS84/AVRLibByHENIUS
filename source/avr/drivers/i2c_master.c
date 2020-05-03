@@ -23,7 +23,7 @@
 
 // --->User files
 
-#include "I2CMaster.h"
+#include "i2c_master.h"
 #include "Debug.h"
 
 /* Variable section ----------------------------------------------------------*/
@@ -182,24 +182,24 @@ static void LogI2Cstatus(EI2CState_t state)
     {
         EI2CState_t State;                  /*!< Current state */
         bool IsInfo;                        /*!< Flag of info item */
-        const char StateString[];           /*!< String version of EI2CState_t */
+        const char *StateString;            /*!< String version of EI2CState_t */
     }EI2CState_Descr_t;
     EI2CState_Descr_t stateStrings[] =
     {
-        I2C_START        , true , "I2C_START",
-        I2C_REP_START    , true , "I2C_REP_START",
-        I2C_MTX_ADR_ACK  , true , "I2C_MTX_ADR_ACK",
-        I2C_MTX_DATA_ACK , true , "I2C_MTX_DATA_ACK",
-        I2C_MRX_DATA_ACK , true , "I2C_MRX_DATA_ACK",
-        I2C_MRX_ADR_ACK  , true , "I2C_MRX_ADR_ACK",
-        I2C_MRX_DATA_NACK, true , "I2C_MRX_DATA_NACK",
-        I2C_ARB_LOST     , true , "I2C_ARB_LOST",
-        I2C_MTX_ADR_NACK , false, "I2C_MTX_ADR_NACK",
-        I2C_MRX_ADR_NACK , false, "I2C_MRX_ADR_NACK",
-        I2C_MTX_DATA_NACK, false, "I2C_MTX_DATA_NACK",
-        I2C_BUS_ERROR    , false, "I2C_BUS_ERROR"			
+		{ I2C_START        , true , "I2C_START" },
+		{ I2C_REP_START    , true , "I2C_REP_START" },
+		{ I2C_MTX_ADR_ACK  , true , "I2C_MTX_ADR_ACK" },
+		{ I2C_MTX_DATA_ACK , true , "I2C_MTX_DATA_ACK" },
+		{ I2C_MRX_DATA_ACK , true , "I2C_MRX_DATA_ACK" },
+		{ I2C_MRX_ADR_ACK  , true , "I2C_MRX_ADR_ACK" },
+		{ I2C_MRX_DATA_NACK, true , "I2C_MRX_DATA_NACK" },
+		{ I2C_ARB_LOST     , true , "I2C_ARB_LOST" },
+		{ I2C_MTX_ADR_NACK , false, "I2C_MTX_ADR_NACK" },
+		{ I2C_MRX_ADR_NACK , false, "I2C_MRX_ADR_NACK" },
+		{ I2C_MTX_DATA_NACK, false, "I2C_MTX_DATA_NACK" },
+		{ I2C_BUS_ERROR    , false, "I2C_BUS_ERROR" }
     };
-    const uint8_t numberOfStates = sizeof(stateStrings) / sizeof(EI2CState_t);
+    const uint8_t numberOfStates = sizeof(stateStrings) / sizeof(EI2CState_Descr_t);
     EI2CState_Descr_t *currentStateDescr = NULL;
 		
     // Gets descriptor for specified state
@@ -215,14 +215,14 @@ static void LogI2Cstatus(EI2CState_t state)
     if (currentStateDescr)
     {
         DebugWrite(
-            currentStateDescr->IsInfo ? "I2C Info: %s\r\n" : "I2C Error: %s\r\n",
+            (char *)(currentStateDescr->IsInfo ? "I2C Info: %s\r\n" : "I2C Error: %s\r\n"),
             currentStateDescr->StateString);
 	}
 #endif								/* I2C_DEBUG_ENABLED */		
 }
 
 /*----------------------------------------------------------------------------*/
-I2CStatusReg_t I2CMaster_GetStatus()
+I2CStatusReg_t I2CMaster_GetStatus(void)
 {
 	return Status;
 }
@@ -237,7 +237,7 @@ ISR(TWI_vect)
 {
 	static uint8_t buffIndex;
 
-	State = I2C_STATUS;
+	State = (EI2CState_t)I2C_STATUS;
 
 	switch(State)
 	{

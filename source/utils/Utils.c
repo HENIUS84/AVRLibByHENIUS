@@ -27,7 +27,7 @@
 uint8_t CRC8(uint8_t *dataIn, uint16_t size)
 {
 	#define CRC8INIT  0x00
-	#define CRC8POLY  0x18          //0x18 = X^8+X^5+X^4+X^0
+	#define CRC8POLY  0x18					//0x18 = X^8+X^5+X^4+X^0
 	
 	uint8_t  crc;
 	uint16_t loopCount;

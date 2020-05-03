@@ -52,7 +52,7 @@ typedef struct
 	/*! Pointer to the frame sending function */
 	void(*SendFrame)(CommProtocolFrame_t* frame);
 	/*! Pointer to the controller handler function */
-	bool(*Handler)();	
+	bool(*Handler)(void);	
 }CommController_t;
 
 #endif								/* COMMUNICATION_CONTROLLER_H */

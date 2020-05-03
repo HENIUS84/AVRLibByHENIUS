@@ -1,6 +1,6 @@
 /**
   ******************************************************************************
-  * @file     Debug.h
+  * @file     debug.h
   * @author   HENIUS (Paweł Witak)
   * @version  1.01.001
   * @date     18/03/2011
@@ -16,19 +16,20 @@
 /* Include section -----------------------------------------------------------*/
 
 // --->System files
+
 #include <stdbool.h>
 #include <avr/io.h>
 
 /* Macros, constants and definitions section ---------------------------------*/
 
-/*! Wyświetlanie komunikatu debug (umieszcza tekst w pamięci RAM) */
-#define PRINTF_DBG(msg, args...)	(DebugWrite(msg, ##args))
-/*! Wyświetlanie komunikatu debug (umieszcza tekst w pamięci programu) */
-#define PRINTF_DBG_P(msg, args...)	(DebugWrite_P(PSTR(msg), ##args))
+/*! Prints debug message (text in RAM memory). */
+#define PRINTF_DBG(msg, ...)	(DebugWrite(msg, __VA_ARGS__))
+/*! Prints debug message (text in Flash memory). */
+#define PRINTF_DBG_P(msg, ...)	(DebugWrite_P(PSTR(msg), __VA_ARGS__))
 
 /* Declaration section -------------------------------------------------------*/
 
-// ---> Funkcje
+// --->Functions
 
 /*----------------------------------------------------------------------------*/
 /**

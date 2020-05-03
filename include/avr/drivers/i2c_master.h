@@ -1,6 +1,6 @@
 /**
  *******************************************************************************
- * @file     I2CMaster.h                                                      
+ * @file     i2c_master.h                                                      
  * @author   HENIUS (Paweł Witak)                                              
  * @version  1.1.3
  * @date     03/04/2014                                                        
@@ -159,7 +159,7 @@ void I2CMaster_Deinit(void);
  * @param    None
  * @retval   None
  */
-bool I2CMaster_IsTransceiverBusy();
+bool I2CMaster_IsTransceiverBusy(void);
 
 /*----------------------------------------------------------------------------*/
 /**
@@ -185,7 +185,7 @@ bool I2CMaster_ReadData(uint8_t *message, uint8_t messageSize);
  * @param    None
  * @retval   Transmission state
  */
-I2CStatusReg_t I2CMaster_GetStatus();
+I2CStatusReg_t I2CMaster_GetStatus(void);
 
 #endif										/* I2C_MASTER_H */
 
