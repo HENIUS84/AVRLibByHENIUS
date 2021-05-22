@@ -47,15 +47,15 @@ endfunction()
 # ******************************************************************************
 # Generates test coverage report for MSVC compiler.
 # ******************************************************************************
-function(generate_coverage_report_MSVC FIRMWARE_DIR HTML_REPORT_DIR EXECUTABLE_FILE)
+function(generate_coverage_report_MSVC SOURCE_DIR HTML_REPORT_DIR EXECUTABLE_FILE)
 	message("Coverage report generating for MSVC compiler")
-	file(TO_NATIVE_PATH "${FIRMWARE_DIR}" FIRMWARE_DIR)
+	file(TO_NATIVE_PATH "${SOURCE_DIR}" SOURCE_DIR)
 	file(TO_NATIVE_PATH "${HTML_REPORT_DIR}" HTML_REPORT_DIR)
 	file(TO_NATIVE_PATH "${EXECUTABLE_FILE}" EXECUTABLE_FILE)
 	execute_process(
 			COMMAND OpenCppCoverage 
 			--verbose
-			--sources ${FIRMWARE_DIR}
+			--sources ${SOURCE_DIR}
 			--excluded_sources googletest			
 			--excluded_sources main.cpp		
 			--excluded_sources tests
@@ -66,11 +66,12 @@ endfunction()
 # ******************************************************************************
 # Generates test coverage report for GCC compiler.
 # ******************************************************************************
-function(generate_coverage_report_GCC FIRMWARE_DIR HTML_REPORT_DIR EXECUTABLE_FILE)
+function(generate_coverage_report_GCC SOURCE_DIR HTML_REPORT_DIR EXECUTABLE_FILE)
 	message("Coverage report generating for GCC compiler")
 	file(MAKE_DIRECTORY ${HTML_REPORT_DIR})
 	execute_process(COMMAND ${EXECUTABLE_FILE})
 	set(REPORT_FILE_PATH ${HTML_REPORT_DIR}/index.html)
+	get_filename_component(OBJ_DIR ${SOURCE_DIR} DIRECTORY)
 	execute_process(
 			COMMAND gcovr 
 			--html
@@ -81,7 +82,9 @@ function(generate_coverage_report_GCC FIRMWARE_DIR HTML_REPORT_DIR EXECUTABLE_FI
 			--exclude ".*base_mock.h.*"
 			--exclude ".*tests.*"
 			--exclude ".*mocks.*"
-			-r ${FIRMWARE_DIR}
+			-v
+			-r ${SOURCE_DIR}
+			--object-directory ${OBJ_DIR}
 			-o ${REPORT_FILE_PATH})
 			
 	# Workarround for not woking --html-title in gcovr
@@ -89,24 +92,24 @@ function(generate_coverage_report_GCC FIRMWARE_DIR HTML_REPORT_DIR EXECUTABLE_FI
 	foreach(file ${HTML_FILES})
 		replace_text_in_file(${file}
 						     "GCC Code Coverage Report"
-						     "${SOLUTION_NAME} Code Coverage Report")
+						     "${PROJECT_NAME} Code Coverage Report")
 	endforeach()	
 endfunction()
 
 # ******************************************************************************
 # Generates test coverage report for current compiler.
 # ******************************************************************************
-function(generate_coverage_report FIRMWARE_DIR HTML_REPORT_DIR EXECUTABLE_FILE)
+function(generate_coverage_report SOURCE_DIR HTML_REPORT_DIR EXECUTABLE_FILE)
 	if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 		generate_coverage_report_MSVC(
-			${FIRMWARE_DIR}
+			${SOURCE_DIR}
 			${HTML_REPORT_DIR}
 			${EXECUTABLE_FILE})
 	else()
 		generate_coverage_report_GCC(
-			${FIRMWARE_DIR}
+			${SOURCE_DIR}
 			${HTML_REPORT_DIR}
-			${EXECUTABLE_FILE})			
+			${EXECUTABLE_FILE})
 	endif()
 	message("Report generated")	
 endfunction()
