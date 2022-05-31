@@ -49,13 +49,15 @@ endif()
 # ******************************************************************************
 # Configures the project.
 # ******************************************************************************
-function(configure_unit_tests)
+function(configure_unit_tests ENABLE_POST)
     add_executable(${CMAKE_PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp ${TEST_SRC_FILES})
     target_link_libraries(${CMAKE_PROJECT_NAME} PUBLIC gmock gmock_main)
-    add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD
-                       COMMAND ${CMAKE_COMMAND}
-                       -DPROJECT_NAME=${CMAKE_PROJECT_NAME}
-                       -DTESTED_SOURCE_DIR=${TESTED_SOURCE_DIR}
-                       -DCMAKE_LIB_DIR=${CMAKE_LIB_DIR}
-                       -P ${CMAKE_LIB_DIR}/UnitTests-POST.cmake)
+	if (${ENABLE_POST} EQUAL 1)
+		add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD
+						   COMMAND ${CMAKE_COMMAND}
+						   -DPROJECT_NAME=${CMAKE_PROJECT_NAME}
+						   -DTESTED_SOURCE_DIR=${TESTED_SOURCE_DIR}
+						   -DCMAKE_LIB_DIR=${CMAKE_LIB_DIR}
+						   -P ${CMAKE_LIB_DIR}/UnitTests-POST.cmake)
+	endif()
 endfunction()

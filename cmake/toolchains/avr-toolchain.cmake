@@ -4,11 +4,14 @@ message("cmake toolchain for AVR platform")
 # Compiler settings
 ################################
 
+message("Looking for AVR compiler...")
 find_program(AVR_CC avr-gcc)
 find_program(AVR_CXX avr-g++)
 find_program(AVR_OBJCOPY avr-objcopy)
 find_program(AVR_SIZE_TOOL avr-size)
 find_program(AVR_OBJDUMP avr-objdump)
+message("AVR GCC: " ${AVR_CC})
+message("AVR G++: " ${AVR_CXX})
 
 set(CMAKE_SYSTEM_NAME Generic)
 set(CMAKE_SYSTEM_PROCESSOR avr)
